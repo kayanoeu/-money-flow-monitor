@@ -28,9 +28,6 @@ async function fromYahoo(symbol) {
   const last = closes[closes.length - 1];
   const prev = closes.find(v => v !== last) ?? closes[closes.length - 2];
   if (closes.length < 2) throw new Error(`not enough closes for ${yahooSymbol}`);
-  const last = closes[closes.length - 1];
-  const prev = closes[closes.length - 2];
-  return { last, prev, change: last - prev, changePct: ((last - prev) / prev) * 100 };
 }
 
 export default async function handler(req, res) {
