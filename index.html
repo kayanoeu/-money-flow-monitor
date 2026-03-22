@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global Money Flow Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --bg2: #0d1117;
+    --bg3: #111820;
+    --border: #1e2a35;
+    --border2: #243040;
+    --text: #c8d8e8;
+    --text-dim: #5a7080;
+    --text-bright: #e8f4ff;
+    --accent: #00d4ff;
+    --accent2: #0088bb;
+    --green: #00e676;
+    --green-dim: #004d28;
+    --red: #ff4444;
+    --red-dim: #4d0000;
+    --yellow: #ffd740;
+    --yellow-dim: #4d3d00;
+    --grid: rgba(0,212,255,0.04);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 15px;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+  .header-right { display: flex; align-items: center; gap: 20px; }
+  .last-update { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); }
+  .refresh-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.2s;
+  }
+  .refresh-btn:hover { background: var(--accent); color: var(--bg); }
+  .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .container { max-width: 1440px; margin: 0 auto; padding: 20px 24px; }
+
+  .regime-bar {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 16px 24px;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 24px;
+  }
+  .regime-label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+  .regime-value { font-family: 'Space Mono', monospace; font-size: 22px; color: var(--text-bright); margin-top: 2px; }
+  .regime-track { position: relative; height: 8px; background: var(--border); }
+  .regime-fill { height: 100%; background: linear-gradient(90deg, var(--red), var(--yellow), var(--green)); width: 100%; position: absolute; top: 0; left: 0; }
+  .regime-thumb {
+    position: absolute; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px; height: 14px;
+    background: var(--text-bright);
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255,255,255,0.4);
+    transition: left 0.8s cubic-bezier(0.25,0.46,0.45,0.94);
+  }
+  .regime-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .regime-tag { font-family: 'DM Mono', monospace; font-size: 11px; padding: 3px 10px; border: 1px solid; letter-spacing: 0.05em; }
+  .tag-bull { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+  .tag-bear { border-color: var(--red);   color: var(--red);   background: var(--red-dim); }
+  .tag-neut { border-color: var(--yellow);color: var(--yellow);background: var(--yellow-dim); }
+
+  .score-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+  .score-card { background: var(--bg2); border: 1px solid var(--border); padding: 12px 14px; transition: border-color 0.2s; }
+  .score-card.active { border-color: var(--accent); }
+  .score-card-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; margin-bottom: 6px; }
+  .score-card-score { font-family: 'Space Mono', monospace; font-size: 20px; color: var(--text-bright); }
+  .score-bar-mini { margin-top: 8px; height: 3px; background: var(--border); position: relative; }
+  .score-bar-fill { position: absolute; height: 100%; top: 0; background: var(--accent); transition: width 0.8s ease; }
+
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .full-width { grid-column: 1 / -1; }
+
+  .panel { background: var(--bg2); border: 1px solid var(--border); overflow: hidden; }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg3);
+  }
+  .panel-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
+  .layer-badge { font-family: 'Space Mono', monospace; font-size: 9px; padding: 2px 6px; background: var(--accent2); color: var(--bg); letter-spacing: 0.05em; }
+  .panel-score { font-family: 'Space Mono', monospace; font-size: 13px; }
+
+  .metric-list { padding: 4px 0; }
+  .metric-row {
+    display: grid;
+    grid-template-columns: 130px 90px 80px 1fr 60px;
+    align-items: center;
+    padding: 9px 16px;
+    border-bottom: 1px solid rgba(30,42,53,0.5);
+    transition: background 0.15s;
+  }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-row:hover { background: rgba(0,212,255,0.03); }
+  .metric-name { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-bright); letter-spacing: 0.03em; }
+  .metric-sub { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+  .metric-value { font-family: 'Space Mono', monospace; font-size: 13px; color: var(--text-bright); text-align: right; }
+  .metric-change { font-family: 'DM Mono', monospace; font-size: 11px; text-align: right; padding-right: 4px; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .neu { color: var(--text-dim); }
+  .metric-bar-wrap { padding: 0 8px; }
+  .metric-bar-track { height: 3px; background: var(--border); position: relative; }
+  .metric-bar-fill { position: absolute; height: 100%; top: 0; left: 0; transition: width 0.6s ease; }
+  .signal-badge { font-family: 'DM Mono', monospace; font-size: 9px; padding: 3px 7px; letter-spacing: 0.05em; text-align: center; border: 1px solid; }
+  .sig-on   { border-color: var(--green);  color: var(--green);  background: var(--green-dim); }
+  .sig-off  { border-color: var(--red);    color: var(--red);    background: var(--red-dim); }
+  .sig-neut { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-dim); }
+  .sig-load { border-color: var(--border); color: var(--text-dim); }
+
+  .error-note { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--yellow); padding: 8px 16px; background: var(--yellow-dim); border-left: 2px solid var(--yellow); margin: 8px 16px; }
+
+  .japan-panel { background: var(--bg2); border: 1px solid var(--border); padding: 20px 24px; margin-bottom: 16px; }
+  .japan-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .japan-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+  .theme-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .theme-card { border: 1px solid var(--border2); padding: 14px; background: var(--bg3); }
+  .theme-card-label { font-size: 10px; color: var(--text-dim); margin-bottom: 6px; }
+  .theme-card-value { font-family: 'Space Mono', monospace; font-size: 13px; color: var(--text-bright); margin-bottom: 8px; }
+  .theme-card-sectors { display: flex; flex-wrap: wrap; gap: 4px; }
+  .sector-tag { font-family: 'DM Mono', monospace; font-size: 9px; padding: 2px 6px; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.2); color: var(--accent); letter-spacing: 0.04em; }
+
+  .footer { text-align: center; padding: 20px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; border-top: 1px solid var(--border); margin-top: 24px; }
+
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .loading-val { animation: blink 1.5s infinite; color: var(--text-dim); }
+
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .score-row { grid-template-columns: repeat(3, 1fr); }
+    .theme-cards { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .score-row { grid-template-columns: 1fr 1fr; }
+    .metric-bar-wrap { display: none; }
+    .header { padding: 0 14px; }
+    .container { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">GLOBAL MONEY FLOW MONITOR</div>
+  <div class="header-right">
+    <span class="last-update" id="lastUpdate">起動中...</span>
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">↻ 更新</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="regime-bar">
+    <div>
+      <div class="regime-label">レジームスコア</div>
+      <div class="regime-value" id="regimeScore">-- / --</div>
+    </div>
+    <div>
+      <div class="regime-track">
+        <div class="regime-fill"></div>
+        <div class="regime-thumb" id="regimeThumb" style="left:50%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;">
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--red);">RISK-OFF</span>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--yellow);">NEUTRAL</span>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--green);">RISK-ON</span>
+      </div>
+    </div>
+    <div class="regime-tags" id="regimeTags">
+      <span class="regime-tag tag-neut">読み込み中...</span>
+    </div>
+  </div>
+
+  <div class="score-row">
+    <div class="score-card active"><div class="score-card-label">L1 · 流動性</div><div class="score-card-score" id="sc-l1-v">--</div><div class="score-bar-mini"><div class="score-bar-fill" id="sc-l1-b" style="width:50%"></div></div></div>
+    <div class="score-card"><div class="score-card-label">L2 · 金利/クレジット</div><div class="score-card-score" id="sc-l2-v">--</div><div class="score-bar-mini"><div class="score-bar-fill" id="sc-l2-b" style="width:50%"></div></div></div>
+    <div class="score-card"><div class="score-card-label">L3 · クロスアセット</div><div class="score-card-score" id="sc-l3-v">--</div><div class="score-bar-mini"><div class="score-bar-fill" id="sc-l3-b" style="width:50%"></div></div></div>
+    <div class="score-card"><div class="score-card-label">L4 · 株式リーダー</div><div class="score-card-score" id="sc-l4-v">--</div><div class="score-bar-mini"><div class="score-bar-fill" id="sc-l4-b" style="width:50%"></div></div></div>
+    <div class="score-card"><div class="score-card-label">L5 · 日本フロー</div><div class="score-card-score" id="sc-l5-v">--</div><div class="score-bar-mini"><div class="score-bar-fill" id="sc-l5-b" style="width:50%"></div></div></div>
+  </div>
+
+  <div class="main-grid">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="layer-badge">L1</span>Global Liquidity</div>
+        <div class="panel-score" id="l1-score">--</div>
+      </div>
+      <div class="metric-list" id="l1-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="layer-badge">L2</span>Rates & Credit</div>
+        <div class="panel-score" id="l2-score">--</div>
+      </div>
+      <div class="metric-list" id="l2-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="layer-badge">L3</span>Cross-Asset Signals</div>
+        <div class="panel-score" id="l3-score">--</div>
+      </div>
+      <div class="metric-list" id="l3-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="layer-badge">L4</span>Equity Leadership</div>
+        <div class="panel-score" id="l4-score">--</div>
+      </div>
+      <div class="metric-list" id="l4-list"></div>
+    </div>
+
+    <div class="panel full-width">
+      <div class="panel-header">
+        <div class="panel-title"><span class="layer-badge">L5</span>🇯🇵 Japan Flow & Leadership</div>
+        <div class="panel-score" id="l5-score">--</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;">
+        <div>
+          <div style="padding:10px 16px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.08em;border-bottom:1px solid var(--border);">日本株指数</div>
+          <div class="metric-list" id="l5-index-list"></div>
+        </div>
+        <div style="border-left:1px solid var(--border);">
+          <div style="padding:10px 16px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.08em;border-bottom:1px solid var(--border);">円キャリー</div>
+          <div class="metric-list" id="l5-carry-list"></div>
+        </div>
+        <div style="border-left:1px solid var(--border);">
+          <div style="padding:10px 16px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.08em;border-bottom:1px solid var(--border);">グローバルファクター</div>
+          <div class="metric-list" id="l5-factor-list"></div>
+        </div>
+      </div>
+      <div class="error-note" style="margin:12px 16px;">
+        📋 投資部門別売買・日銀ETF・信用評価損益率・空売り比率 は手動入力フォームで追加予定（Phase 2）
+      </div>
+    </div>
+
+  </div>
+
+  <div class="japan-panel">
+    <div class="japan-header">
+      <span style="font-size:20px">🇯🇵</span>
+      <div>
+        <div class="japan-title">日本株テーマシグナル</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">レジームと日本フローから自動生成</div>
+      </div>
+    </div>
+    <div class="theme-cards">
+      <div class="theme-card">
+        <div class="theme-card-label">マクロレジーム</div>
+        <div class="theme-card-value" id="theme-regime">読み込み中...</div>
+        <div class="theme-card-sectors" id="theme-regime-sectors"></div>
+      </div>
+      <div class="theme-card">
+        <div class="theme-card-label">注目セクター</div>
+        <div class="theme-card-value" id="theme-sector">--</div>
+        <div class="theme-card-sectors" id="theme-sector-tags"></div>
+      </div>
+      <div class="theme-card">
+        <div class="theme-card-label">リスク要因</div>
+        <div class="theme-card-value" id="theme-risk">--</div>
+        <div class="theme-card-sectors" id="theme-risk-tags"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  DATA: Twelve Data / FRED (Federal Reserve) &nbsp;|&nbsp;
+  免責: 本ツールは投資補助目的。データの正確性を保証しません。&nbsp;|&nbsp;
+  © 2026 Money Flow Monitor
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// 指標定義
+// ─────────────────────────────────────────────
+
+// Twelve Data経由（/api/quote?symbol=XXX）
+const TD_METRICS = {
+  l1: [
+    { id:'DXY',    symbol:'DX-Y.NYB', label:'DXY',      sub:'米ドル指数',              dir:'down', fmt:'n2' },
+    { id:'USDJPY', symbol:'USD/JPY',  label:'USD/JPY',  sub:'円安=流動性拡張の代理',   dir:'up',   fmt:'n2' },
+    { id:'TIP',    symbol:'TIP',      label:'TIP',      sub:'米実質金利ETF（代理）',   dir:'up',   fmt:'n2' },
+    { id:'GLD',    symbol:'GLD',      label:'GLD',      sub:'ゴールドETF',             dir:'up',   fmt:'n2' },
+    { id:'HYG',    symbol:'HYG',      label:'HYG',      sub:'HY Bond ETF（クレジット代理）', dir:'up', fmt:'n2' },
+  ],
+  l2: [
+    { id:'LQD',   symbol:'LQD',  label:'LQD',  sub:'IG Bond ETF',    dir:'up',   fmt:'n2' },
+    { id:'JNK',   symbol:'JNK',  label:'JNK',  sub:'HY Bond ETF',    dir:'up',   fmt:'n2' },
+    { id:'TLT',   symbol:'TLT',  label:'TLT',  sub:'長期国債ETF',     dir:'up',   fmt:'n2' },
+    { id:'SHY',   symbol:'SHY',  label:'SHY',  sub:'短期国債ETF',     dir:'up',   fmt:'n2' },
+  ],
+  l3: [
+    { id:'GOLD',  symbol:'XAU/USD', label:'Gold',      sub:'ゴールド現物',    dir:'up',  fmt:'n0' },
+    { id:'COP',   symbol:'HG1!',    label:'Copper',    sub:'銅先物',          dir:'up',  fmt:'n3' },
+    { id:'OIL',   symbol:'CL1!',    label:'Oil (WTI)', sub:'WTI原油先物',     dir:'up',  fmt:'n2' },
+  ],
+  l4: [
+    { id:'SOX',  symbol:'SOX',  label:'SOX',  sub:'半導体指数',      dir:'up', fmt:'n0' },
+    { id:'XLK',  symbol:'XLK',  label:'XLK',  sub:'Tech ETF',        dir:'up', fmt:'n2' },
+    { id:'XLF',  symbol:'XLF',  label:'XLF',  sub:'Financial ETF',   dir:'up', fmt:'n2' },
+    { id:'XLE',  symbol:'XLE',  label:'XLE',  sub:'Energy ETF',       dir:'up', fmt:'n2' },
+    { id:'XLU',  symbol:'XLU',  label:'XLU',  sub:'Utilities（防御）',dir:'down',fmt:'n2' },
+    { id:'IWF',  symbol:'IWF',  label:'IWF',  sub:'Growth ETF',       dir:'up', fmt:'n2' },
+    { id:'MTUM', symbol:'MTUM', label:'MTUM', sub:'Momentum ETF',     dir:'up', fmt:'n2' },
+  ],
+  l5_index: [
+    { id:'N225',  symbol:'NI225',   label:'Nikkei 225', sub:'日経平均',       dir:'up', fmt:'n0' },
+    { id:'EWJ',   symbol:'EWJ',     label:'EWJ',        sub:'日本株ETF(米上場)',dir:'up',fmt:'n2' },
+    { id:'DXJ',   symbol:'DXJ',     label:'DXJ',        sub:'円ヘッジ日本株', dir:'up', fmt:'n2' },
+  ],
+  l5_carry: [
+    { id:'USDJPY2', symbol:'USD/JPY', label:'USD/JPY', sub:'円キャリー',  dir:'up',  fmt:'n2' },
+    { id:'AUDJPY',  symbol:'AUD/JPY', label:'AUD/JPY', sub:'豪ドル円',    dir:'up',  fmt:'n2' },
+    { id:'CNHJPY',  symbol:'CNH/JPY', label:'CNH/JPY', sub:'人民元円',    dir:'up',  fmt:'n3' },
+  ],
+  l5_factor: [
+    { id:'IWM',  symbol:'IWM',  label:'IWM',  sub:'小型株',      dir:'up', fmt:'n2' },
+    { id:'QUAL', symbol:'QUAL', label:'QUAL', sub:'Quality ETF', dir:'up', fmt:'n2' },
+    { id:'USMV', symbol:'USMV', label:'USMV', sub:'低ボラETF',   dir:'down',fmt:'n2' },
+  ],
+};
+
+// FRED経由（/api/fred?series_id=XXX）
+// ※FREDは日次・週次更新なので1時間ごとの再取得でも値は変わらないことが多い
+const FRED_METRICS = {
+  l1: [
+    { id:'RRPONTSYD', series_id:'RRPONTSYD', label:'RRP',  sub:'逆レポ残高(十億ドル)', dir:'down', fmt:'n0', scale:1e-9 },
+    { id:'NFCI',      series_id:'NFCI',      label:'NFCI', sub:'金融環境指数(週次)',    dir:'down', fmt:'n3', scale:1 },
+  ],
+  l2: [
+    { id:'DGS2',   series_id:'DGS2',           label:'US 2Y',   sub:'2年債利回り(%)',    dir:'down', fmt:'n2', scale:1 },
+    { id:'DGS10',  series_id:'DGS10',           label:'US 10Y',  sub:'10年債利回り(%)',   dir:'down', fmt:'n2', scale:1 },
+    { id:'T10Y2Y', series_id:'T10Y2Y',          label:'2s10s',   sub:'イールドカーブ(%)', dir:'up',   fmt:'n2', scale:1 },
+    { id:'HYSPREAD',series_id:'BAMLH0A0HYM2',   label:'HY Spread',sub:'HYスプレッド(bp)',dir:'down', fmt:'n2', scale:1 },
+    { id:'IGSPREAD',series_id:'BAMLC0A0CM',     label:'IG Spread',sub:'IGスプレッド(bp)',dir:'down', fmt:'n2', scale:1 },
+  ],
+  l1_balancesheet: [
+    { id:'WALCL', series_id:'WALCL', label:'Fed BS', sub:'Fed資産(十億ドル)', dir:'up', fmt:'n0', scale:1 },
+  ],
+};
+
+// ─────────────────────────────────────────────
+// データ取得
+// ─────────────────────────────────────────────
+
+const cache = {};
+const CACHE_TTL = 55 * 60 * 1000; // 55分
+
+async function fetchQuote(symbol) {
+  const key = `td:${symbol}`;
+  if (cache[key] && Date.now() - cache[key].ts < CACHE_TTL) return cache[key].data;
+  try {
+    const res = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    if (d.status === 'error' || !d.close) throw new Error(d.message || 'no data');
+    const last = parseFloat(d.close);
+    const prev = parseFloat(d.previous_close);
+    const data = { last, prev, change: last - prev, changePct: ((last - prev) / prev) * 100 };
+    cache[key] = { ts: Date.now(), data };
+    return data;
+  } catch(e) {
+    console.warn(`fetchQuote(${symbol}):`, e.message);
+    return null;
+  }
+}
+
+async function fetchFred(series_id, scale = 1) {
+  const key = `fred:${series_id}`;
+  if (cache[key] && Date.now() - cache[key].ts < CACHE_TTL) return cache[key].data;
+  try {
+    const res = await fetch(`/api/fred?series_id=${series_id}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    const last = d.value * scale;
+    const prev = d.prev  * scale;
+    const data = { last, prev, change: last - prev, changePct: ((last - prev) / prev) * 100, date: d.date };
+    cache[key] = { ts: Date.now(), data };
+    return data;
+  } catch(e) {
+    console.warn(`fetchFred(${series_id}):`, e.message);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────
+// UI
+// ─────────────────────────────────────────────
+
+function fmt(v, f) {
+  if (v == null || isNaN(v)) return '--';
+  if (f === 'n0') return v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  if (f === 'n2') return v.toFixed(2);
+  if (f === 'n3') return v.toFixed(3);
+  if (f === 'n1') return v.toFixed(1);
+  return v.toString();
+}
+
+function signal(pct, dir) {
+  if (pct == null) return 0;
+  const t = 0.3;
+  if (dir === 'up')   return pct >  t ? 1 : pct < -t ? -1 : 0;
+  if (dir === 'down') return pct < -t ? 1 : pct >  t ? -1 : 0;
+  return 0;
+}
+
+function makeRow(m, data) {
+  const val   = data ? fmt(data.last, m.fmt) : '--';
+  const pct   = data ? data.changePct : null;
+  const sig   = signal(pct, m.dir);
+  const pctStr = pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : '--';
+  const cls    = pct == null ? 'neu' : pct > 0 ? 'pos' : pct < 0 ? 'neg' : 'neu';
+  const sigCls = sig === 1 ? 'sig-on' : sig === -1 ? 'sig-off' : data ? 'sig-neut' : 'sig-load';
+  const sigTxt = sig === 1 ? 'ON' : sig === -1 ? 'OFF' : data ? 'NEU' : '…';
+  const barPct = data ? Math.min(100, Math.max(0, (data.changePct + 3) / 6 * 100)) : 50;
+  const barCol = sig === 1 ? 'var(--green)' : sig === -1 ? 'var(--red)' : 'var(--yellow)';
+  const dateHint = data?.date ? `<div class="metric-sub">${data.date}</div>` : '';
+
+  return `<div class="metric-row">
+    <div>
+      <div class="metric-name">${m.label}</div>
+      <div class="metric-sub">${m.sub}</div>${dateHint}
+    </div>
+    <div class="metric-value">${val}</div>
+    <div class="metric-change ${cls}">${pctStr}</div>
+    <div class="metric-bar-wrap">
+      <div class="metric-bar-track">
+        <div class="metric-bar-fill" style="width:${barPct}%;background:${barCol}"></div>
+      </div>
+    </div>
+    <div><span class="signal-badge ${sigCls}">${sigTxt}</span></div>
+  </div>`;
+}
+
+function setLoading(listId, metrics) {
+  document.getElementById(listId).innerHTML = metrics.map(m =>
+    `<div class="metric-row">
+      <div><div class="metric-name">${m.label}</div><div class="metric-sub">${m.sub}</div></div>
+      <div class="metric-value loading-val">…</div>
+      <div class="metric-change neu loading-val">…</div>
+      <div class="metric-bar-wrap"><div class="metric-bar-track"><div class="metric-bar-fill" style="width:50%;background:var(--border)"></div></div></div>
+      <div><span class="signal-badge sig-load">…</span></div>
+    </div>`
+  ).join('');
+}
+
+// ─────────────────────────────────────────────
+// レイヤー読み込み
+// ─────────────────────────────────────────────
+
+async function loadTdLayer(metricsKey, listId, scoreId) {
+  const metrics = TD_METRICS[metricsKey];
+  setLoading(listId, metrics);
+  const results = await Promise.all(metrics.map(async m => ({ ...m, data: await fetchQuote(m.symbol) })));
+  document.getElementById(listId).innerHTML = results.map(r => makeRow(r, r.data)).join('');
+  const scores = results.map(r => signal(r.data?.changePct, r.dir));
+  const total  = scores.reduce((a, b) => a + b, 0);
+  if (scoreId) setLayerScore(scoreId, total, metrics.length);
+  return { total, max: metrics.length };
+}
+
+async function loadL1() {
+  // TDメトリクス
+  const tdRes = await loadTdLayer('l1', 'l1-list', null);
+  // FREDメトリクス（追記）
+  const fredMetrics = [...FRED_METRICS.l1, ...FRED_METRICS.l1_balancesheet];
+  const fredResults = await Promise.all(fredMetrics.map(async m => ({
+    ...m, data: await fetchFred(m.series_id, m.scale)
+  })));
+  const listEl = document.getElementById('l1-list');
+  listEl.innerHTML += fredResults.map(r => makeRow(r, r.data)).join('');
+  const fredScores = fredResults.map(r => signal(r.data?.changePct, r.dir));
+  const total = tdRes.total + fredScores.reduce((a, b) => a + b, 0);
+  const max   = tdRes.max + fredMetrics.length;
+  setLayerScore('l1-score', total, max);
+  return { total, max, weight: 1.2 };
+}
+
+async function loadL2() {
+  const tdRes = await loadTdLayer('l2', 'l2-list', null);
+  const fredResults = await Promise.all(FRED_METRICS.l2.map(async m => ({
+    ...m, data: await fetchFred(m.series_id, m.scale)
+  })));
+  const listEl = document.getElementById('l2-list');
+  listEl.innerHTML += fredResults.map(r => makeRow(r, r.data)).join('');
+  const fredScores = fredResults.map(r => signal(r.data?.changePct, r.dir));
+  const total = tdRes.total + fredScores.reduce((a, b) => a + b, 0);
+  const max   = tdRes.max + FRED_METRICS.l2.length;
+  setLayerScore('l2-score', total, max);
+  return { total, max, weight: 1.0 };
+}
+
+async function loadL3() {
+  return { ...(await loadTdLayer('l3', 'l3-list', 'l3-score')), weight: 0.8 };
+}
+
+async function loadL4() {
+  return { ...(await loadTdLayer('l4', 'l4-list', 'l4-score')), weight: 1.0 };
+}
+
+async function loadL5() {
+  const [idxR, carryR, facR] = await Promise.all([
+    loadTdLayer('l5_index',  'l5-index-list',  null),
+    loadTdLayer('l5_carry',  'l5-carry-list',  null),
+    loadTdLayer('l5_factor', 'l5-factor-list', null),
+  ]);
+  const total = idxR.total + carryR.total + facR.total;
+  const max   = idxR.max   + carryR.max   + facR.max;
+  setLayerScore('l5-score', total, max);
+  return { total, max, weight: 0.9 };
+}
+
+function setLayerScore(id, total, max) {
+  const el = document.getElementById(id);
+  el.textContent = `${total > 0 ? '+' : ''}${total} / ${max}`;
+  el.style.color = total > 0 ? 'var(--green)' : total < 0 ? 'var(--red)' : 'var(--yellow)';
+}
+
+// ─────────────────────────────────────────────
+// レジーム＆テーマ生成
+// ─────────────────────────────────────────────
+
+function updateRegime(layers) {
+  const tw = layers.reduce((a, r) => a + r.total * r.weight, 0);
+  const mw = layers.reduce((a, r) => a + r.max   * r.weight, 0);
+  const pct = (tw + mw) / (2 * mw);
+
+  document.getElementById('regimeScore').textContent =
+    `${tw > 0 ? '+' : ''}${tw.toFixed(1)} / ${mw.toFixed(1)}`;
+  document.getElementById('regimeThumb').style.left = `${pct * 100}%`;
+
+  const tags = document.getElementById('regimeTags');
+  if (pct > 0.6)      tags.innerHTML = '<span class="regime-tag tag-bull">RISK-ON</span><span class="regime-tag tag-bull">強気相場</span>';
+  else if (pct < 0.4) tags.innerHTML = '<span class="regime-tag tag-bear">RISK-OFF</span><span class="regime-tag tag-bear">弱気圧力</span>';
+  else                tags.innerHTML = '<span class="regime-tag tag-neut">NEUTRAL</span><span class="regime-tag tag-neut">方向感なし</span>';
+
+  // ミニスコアカード更新
+  layers.forEach((r, i) => {
+    const idx = i + 1;
+    const v = document.getElementById(`sc-l${idx}-v`);
+    const b = document.getElementById(`sc-l${idx}-b`);
+    if (!v) return;
+    v.textContent = `${r.total > 0 ? '+' : ''}${r.total}`;
+    v.style.color = r.total > 0 ? 'var(--green)' : r.total < 0 ? 'var(--red)' : 'var(--yellow)';
+    const bp = ((r.total + r.max) / (2 * r.max)) * 100;
+    b.style.width = `${Math.min(100, Math.max(0, bp))}%`;
+    b.style.background = r.total > 0 ? 'var(--green)' : r.total < 0 ? 'var(--red)' : 'var(--yellow)';
+  });
+
+  // テーマ生成
+  const isOn  = pct > 0.6;
+  const isOff = pct < 0.4;
+  const regime  = isOn ? 'Risk-On 優位' : isOff ? 'Risk-Off 優位' : 'Neutral / 様子見';
+  const sectors = isOn  ? ['半導体', '輸出株', 'グロース', '商社', 'テック']
+                : isOff ? ['内需株', '銀行', '高配当', 'ディフェンシブ', '公益']
+                :         ['バランス', '高配当', '低ボラ'];
+  const risk = isOn  ? '急激な円高・金利上昇'
+             : isOff ? '世界景気後退・信用収縮'
+             :         '方向感なし・ボラ拡大注意';
+
+  document.getElementById('theme-regime').textContent = regime;
+  document.getElementById('theme-regime-sectors').innerHTML = sectors.map(s => `<span class="sector-tag">${s}</span>`).join('');
+  document.getElementById('theme-sector').textContent = isOn ? '輸出・テク優位' : isOff ? 'ディフェンシブ優位' : 'セクター中立';
+  document.getElementById('theme-sector-tags').innerHTML = sectors.map(s => `<span class="sector-tag">${s}</span>`).join('');
+  document.getElementById('theme-risk').textContent = risk;
+  document.getElementById('theme-risk-tags').innerHTML = `<span class="sector-tag" style="border-color:var(--red);color:var(--red);background:var(--red-dim)">${risk}</span>`;
+}
+
+// ─────────────────────────────────────────────
+// メイン
+// ─────────────────────────────────────────────
+
+async function refreshAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.textContent = '取得中...';
+  Object.keys(cache).forEach(k => delete cache[k]);
+
+  try {
+    const [l1r, l2r, l3r, l4r, l5r] = await Promise.all([
+      loadL1(), loadL2(), loadL3(), loadL4(), loadL5()
+    ]);
+    updateRegime([l1r, l2r, l3r, l4r, l5r]);
+  } catch(e) {
+    console.error('refreshAll error:', e);
+  }
+
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent =
+    `最終更新: ${now.toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })}`;
+  btn.disabled = false;
+  btn.textContent = '↻ 更新';
+}
+
+// ページ読み込み時に自動実行
+refreshAll();
+
+// 1時間ごとに自動更新
+setInterval(refreshAll, 60 * 60 * 1000);
+</script>
+</body>
+</html>
