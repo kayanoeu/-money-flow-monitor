@@ -1,7 +1,10 @@
 {
   "functions": {
-    "api/*.js": {
-      "runtime": "edge"
+    "api/quote.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/fred.js": {
+      "runtime": "nodejs20.x"
     }
   }
 }
