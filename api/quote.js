@@ -24,7 +24,9 @@ async function fromYahoo(symbol) {
   const json = await r.json();
   const result = json?.chart?.result?.[0];
   if (!result) throw new Error(`no result for ${yahooSymbol}`);
- const closes = [...new Set(result.indicators.quote[0].close.filter(v => v != null))];
+  const closes = result.indicators.quote[0].close.filter(v => v != null);
+  const last = closes[closes.length - 1];
+  const prev = closes.find(v => v !== last) ?? closes[closes.length - 2];
   if (closes.length < 2) throw new Error(`not enough closes for ${yahooSymbol}`);
   const last = closes[closes.length - 1];
   const prev = closes[closes.length - 2];
