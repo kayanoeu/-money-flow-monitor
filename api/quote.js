@@ -16,7 +16,7 @@ const YAHOO_MAP = {
 
 async function fromYahoo(symbol) {
   const yahooSymbol = YAHOO_MAP[symbol] ?? symbol;
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=10d`;
   const r = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' }
   });
@@ -24,7 +24,7 @@ async function fromYahoo(symbol) {
   const json = await r.json();
   const result = json?.chart?.result?.[0];
   if (!result) throw new Error(`no result for ${yahooSymbol}`);
-  const closes = result.indicators.quote[0].close.filter(v => v != null);
+ const closes = [...new Set(result.indicators.quote[0].close.filter(v => v != null))];
   if (closes.length < 2) throw new Error(`not enough closes for ${yahooSymbol}`);
   const last = closes[closes.length - 1];
   const prev = closes[closes.length - 2];
