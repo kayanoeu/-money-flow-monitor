@@ -292,9 +292,51 @@
           <div class="metric-list" id="l5-factor-list"></div>
         </div>
       </div>
-      <div class="error-note" style="margin:12px 16px;">
-        📋 投資部門別売買・日銀ETF・信用評価損益率・空売り比率 は手動入力フォームで追加予定（Phase 2）
-      </div>
+<div style="padding:16px;border-top:1px solid var(--border);">
+  <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">
+    📋 手動入力 — 日本フロー補完データ
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;" id="manual-inputs">
+
+    <div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">海外投資家売買（億円）</div>
+      <input type="number" id="mi-foreign" placeholder="例: 1234"
+        style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
+      <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">＋=買い越し / −=売り越し</div>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">空売り比率（%）</div>
+      <input type="number" id="mi-shortsell" placeholder="例: 42.3" step="0.1"
+        style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
+      <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">45%超=警戒 / 40%未満=強気</div>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">信用評価損益率（%）</div>
+      <input type="number" id="mi-shinyou" placeholder="例: -8.5" step="0.1"
+        style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
+      <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">−10%以下=過熱警戒</div>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">日銀ETF保有（兆円）</div>
+      <input type="number" id="mi-boj" placeholder="例: 37.1" step="0.1"
+        style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
+      <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">残高推移で需給確認</div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:12px;display:flex;align-items:center;gap:12px;">
+    <button onclick="saveManualInputs()"
+      style="background:var(--accent);color:var(--bg);border:none;font-family:'DM Mono',monospace;font-size:11px;padding:8px 20px;cursor:pointer;letter-spacing:0.08em;">
+      保存してスコアに反映
+    </button>
+    <span id="mi-saved" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);display:none;">✓ 保存しました</span>
+    <span id="mi-date" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);"></span>
+  </div>
+</div>
     </div>
 
   </div>
@@ -661,7 +703,57 @@ async function refreshAll() {
 refreshAll();
 
 // 1時間ごとに自動更新　しかし削除
+// ─────────────────────────────────────────────
+// 手動入力フォーム
+// ─────────────────────────────────────────────
 
+function saveManualInputs() {
+  const data = {
+    foreign:   parseFloat(document.getElementById('mi-foreign').value)   || null,
+    shortsell: parseFloat(document.getElementById('mi-shortsell').value) || null,
+    shinyou:   parseFloat(document.getElementById('mi-shinyou').value)   || null,
+    boj:       parseFloat(document.getElementById('mi-boj').value)       || null,
+    savedAt:   new Date().toLocaleString('ja-JP'),
+  };
+  localStorage.setItem('manualInputs', JSON.stringify(data));
+
+  // スコアに反映
+  const score = calcManualScore(data);
+  const saved = document.getElementById('mi-saved');
+  const dateEl = document.getElementById('mi-date');
+  saved.style.display = 'inline';
+  dateEl.textContent = `入力日時: ${data.savedAt}`;
+  setTimeout(() => saved.style.display = 'none', 3000);
+
+  console.log('手動入力スコア:', score);
+}
+
+function calcManualScore(data) {
+  let score = 0;
+  // 海外投資家：買い越しはRisk-On
+  if (data.foreign != null) score += data.foreign > 500 ? 1 : data.foreign < -500 ? -1 : 0;
+  // 空売り比率：低いほどRisk-On
+  if (data.shortsell != null) score += data.shortsell < 40 ? 1 : data.shortsell > 45 ? -1 : 0;
+  // 信用評価損益率：-10%以下は過熱警戒
+  if (data.shinyou != null) score += data.shinyou > -5 ? 1 : data.shinyou < -10 ? -1 : 0;
+  return score;
+}
+
+function loadManualInputs() {
+  const raw = localStorage.getItem('manualInputs');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    if (data.foreign   != null) document.getElementById('mi-foreign').value   = data.foreign;
+    if (data.shortsell != null) document.getElementById('mi-shortsell').value = data.shortsell;
+    if (data.shinyou   != null) document.getElementById('mi-shinyou').value   = data.shinyou;
+    if (data.boj       != null) document.getElementById('mi-boj').value       = data.boj;
+    if (data.savedAt)           document.getElementById('mi-date').textContent = `入力日時: ${data.savedAt}`;
+  } catch(e) {}
+}
+
+// ページ読み込み時に保存済みデータを復元
+loadManualInputs();
 </script>
 </body>
 </html>
