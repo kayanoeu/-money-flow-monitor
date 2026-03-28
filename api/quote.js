@@ -4,7 +4,7 @@ const YAHOO_MAP = {
   'JNK':'JNK','TLT':'TLT','SHY':'SHY','LQD':'LQD','XLK':'XLK','XLF':'XLF',
   'XLE':'XLE','XLU':'XLU','IWF':'IWF','MTUM':'MTUM','EWJ':'EWJ','DXJ':'DXJ',
   'IWM':'IWM','QUAL':'QUAL','USMV':'USMV',
-  'USD/JPY':'USDJPY=X','AUD/JPY':'AUDJPY=X','CNH/JPY':'CNHJPY=X',
+  'USD/JPY':'USDJPY=X','AUD/JPY':'AUDJPY=X','EUR/JPY':'EURJPY=X','CHF/JPY':'CHFJPY=X',
 };
 
 async function fromYahoo(symbol) {
