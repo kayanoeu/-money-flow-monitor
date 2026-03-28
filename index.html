@@ -374,10 +374,11 @@ const TD_METRICS = {
     { id:'DXJ',  symbol:'DXJ',    label:'DXJ',        sub:'円ヘッジ日本株',    dir:'up', fmt:'n2' },
   ],
   l5_carry: [
-    { id:'USDJPY2', symbol:'USD/JPY', label:'USD/JPY', sub:'円キャリー', dir:'up',  fmt:'n2' },
-    { id:'AUDJPY',  symbol:'AUD/JPY', label:'AUD/JPY', sub:'豪ドル円',   dir:'up',  fmt:'n2' },
-    { id:'CNHJPY',  symbol:'CNH/JPY', label:'CNH/JPY', sub:'人民元円',   dir:'up',  fmt:'n3' },
-  ],
+  { id:'USDJPY2', symbol:'USD/JPY', label:'USD/JPY', sub:'円キャリー基軸',  dir:'up', fmt:'n2' },
+  { id:'EURJPY',  symbol:'EUR/JPY', label:'EUR/JPY', sub:'コア円キャリー',  dir:'up', fmt:'n2' },
+  { id:'AUDJPY',  symbol:'AUD/JPY', label:'AUD/JPY', sub:'リスクオン円キャリー', dir:'up', fmt:'n2' },
+  { id:'CHFJPY',  symbol:'CHF/JPY', label:'CHF/JPY', sub:'リスクオフ指標',  dir:'down', fmt:'n2' },
+],
   l5_factor: [
     { id:'IWM',  symbol:'IWM',  label:'IWM',  sub:'小型株',      dir:'up',   fmt:'n2' },
     { id:'QUAL', symbol:'QUAL', label:'QUAL', sub:'Quality ETF', dir:'up',   fmt:'n2' },
