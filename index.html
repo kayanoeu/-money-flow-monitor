@@ -740,15 +740,47 @@ function saveManualInputs() {
   };
   localStorage.setItem('manualInputs', JSON.stringify(data));
 
-  // スコアに反映
   const score = calcManualScore(data);
+
+  // ── L5スコアカードに手動スコアを反映 ──
+  const l5ScoreEl = document.getElementById('l5-score');
+  const currentText = l5ScoreEl.textContent; // 例: "+2 / 10"
+  const match = currentText.match(/([-+\d.]+)\s*\/\s*([\d.]+)/);
+  if (match) {
+    const autoTotal = parseFloat(match[1]);
+    const autoMax   = parseFloat(match[2]);
+    const newTotal  = autoTotal + score;
+    const newMax    = autoMax + 3; // 手動3指標分追加
+    l5ScoreEl.textContent = `${newTotal > 0 ? '+' : ''}${newTotal} / ${newMax}`;
+    l5ScoreEl.style.color = newTotal > 0 ? 'var(--green)' : newTotal < 0 ? 'var(--red)' : 'var(--yellow)';
+
+    // ── L5ミニカードも更新 ──
+    const v = document.getElementById('sc-l5-v');
+    const b = document.getElementById('sc-l5-b');
+    if (v) {
+      v.textContent = `${newTotal > 0 ? '+' : ''}${newTotal}`;
+      v.style.color = l5ScoreEl.style.color;
+      const bp = ((newTotal + newMax) / (2 * newMax)) * 100;
+      b.style.width = `${Math.min(100, Math.max(0, bp))}%`;
+      b.style.background = l5ScoreEl.style.color;
+    }
+  }
+
+  // ── 保存通知 ──
   const saved = document.getElementById('mi-saved');
   const dateEl = document.getElementById('mi-date');
   saved.style.display = 'inline';
   dateEl.textContent = `入力日時: ${data.savedAt}`;
-  setTimeout(() => saved.style.display = 'none', 3000);
 
-  console.log('手動入力スコア:', score);
+  // ── スコア内訳を表示 ──
+  const breakdown = [
+    data.foreign   != null ? `海外売買: ${score >= 1 ? '▲買越' : score <= -1 ? '▼売越' : '中立'}` : null,
+    data.shortsell != null ? `空売比率: ${data.shortsell < 40 ? '▲低い' : data.shortsell > 45 ? '▼高い' : '中立'}` : null,
+    data.shinyou   != null ? `信用損益: ${data.shinyou > -5 ? '▲余裕' : data.shinyou < -10 ? '▼警戒' : '中立'}` : null,
+  ].filter(Boolean).join(' / ');
+
+  saved.textContent = `✓ 保存 | 手動スコア: ${score > 0 ? '+' : ''}${score} (${breakdown})`;
+  setTimeout(() => { saved.textContent = '✓ 保存しました'; saved.style.display = 'none'; }, 5000);
 }
 
 function calcManualScore(data) {
