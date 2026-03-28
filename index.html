@@ -418,12 +418,10 @@ async function fetchQuote(symbol) {
     const res = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
-    if (d.status === 'error' || !d.close) throw new Error(d.message || 'no data');
-    const last = parseFloat(d.close);
-    const prev = parseFloat(d.previous_close);
-    const data = { last, prev, change: last - prev, changePct: ((last - prev) / prev) * 100 };
-    cache[key] = { ts: Date.now(), data };
-    return data;
+    if (d.error) throw new Error(d.error);
+    if (d.last == null) throw new Error('no data');
+    cache[key] = { ts: Date.now(), data: d };
+    return d;
   } catch(e) {
     console.warn(`fetchQuote(${symbol}):`, e.message);
     return null;
