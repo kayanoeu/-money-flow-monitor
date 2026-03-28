@@ -298,33 +298,53 @@
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;" id="manual-inputs">
 
-    <div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">海外投資家売買（億円）</div>
-      <input type="number" id="mi-foreign" placeholder="例: 1234"
-        style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
-      <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">＋=買い越し / −=売り越し</div>
-    </div>
+<div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
+  <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">海外投資家売買（億円）</div>
+  <input type="number" id="mi-foreign" placeholder="例: 1234"
+    style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
+  <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">＋=買い越し / −=売り越し</div>
+  <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text-dim);line-height:1.6;">
+    📌 <a href="https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html" target="_blank" style="color:var(--accent);text-decoration:none;">東証 投資部門別売買状況</a><br>
+    🕐 毎週木曜 16:00頃（前週分）<br>
+    📋 「現物合計」の海外投資家欄を入力
+  </div>
+</div>
 
-    <div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">空売り比率（%）</div>
-      <input type="number" id="mi-shortsell" placeholder="例: 42.3" step="0.1"
-        style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
-      <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">45%超=警戒 / 40%未満=強気</div>
-    </div>
+<div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
+  <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">空売り比率（%）</div>
+  <input type="number" id="mi-shortsell" placeholder="例: 42.3" step="0.1"
+    style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
+  <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">45%超=警戒 / 40%未満=強気</div>
+  <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text-dim);line-height:1.6;">
+    📌 <a href="https://www.jpx.co.jp/markets/statistics-equities/short-selling/index.html" target="_blank" style="color:var(--accent);text-decoration:none;">東証 空売り比率</a><br>
+    🕐 毎営業日 翌16:30頃（前日分）<br>
+    📋 「市場全体の空売り比率」を入力
+  </div>
+</div>
 
-    <div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">信用評価損益率（%）</div>
-      <input type="number" id="mi-shinyou" placeholder="例: -8.5" step="0.1"
-        style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
-      <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">−10%以下=過熱警戒</div>
-    </div>
+<div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
+  <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">信用評価損益率（%）</div>
+  <input type="number" id="mi-shinyou" placeholder="例: -8.5" step="0.1"
+    style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
+  <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">−10%以下=過熱警戒</div>
+  <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text-dim);line-height:1.6;">
+    📌 <a href="https://kabu.com/investment/guide/technical/20.html" target="_blank" style="color:var(--accent);text-decoration:none;">日証金 / 各証券サイト</a><br>
+    🕐 毎週金曜 17:00頃（前週末分）<br>
+    📋 「信用評価損益率」の数値を入力
+  </div>
+</div>
 
-    <div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">日銀ETF保有（兆円）</div>
-      <input type="number" id="mi-boj" placeholder="例: 37.1" step="0.1"
-        style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
-      <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">残高推移で需給確認</div>
-    </div>
+<div style="background:var(--bg3);border:1px solid var(--border2);padding:12px;">
+  <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:6px;">日銀ETF保有（兆円）</div>
+  <input type="number" id="mi-boj" placeholder="例: 37.1" step="0.1"
+    style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text-bright);font-family:'Space Mono',monospace;font-size:13px;padding:6px 8px;outline:none;">
+  <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">残高推移で需給確認</div>
+  <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text-dim);line-height:1.6;">
+    📌 <a href="https://www.boj.or.jp/statistics/boj/other/etf/index.htm" target="_blank" style="color:var(--accent);text-decoration:none;">日本銀行 ETF保有残高</a><br>
+    🕐 月1回（翌月初旬）<br>
+    📋 「ETFの保有残高」の簿価合計を入力
+  </div>
+</div>
 
   </div>
 
