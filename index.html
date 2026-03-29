@@ -597,7 +597,7 @@ function makeRow(m, data) {
   const barCol = sig === 1 ? 'var(--green)' : sig === -1 ? 'var(--red)' : 'var(--yellow)';
   const dateHint = data?.date ? `<div class="metric-sub">${data.date}</div>` : '';
 
-  return `<div class="metric-row">
+  return `<div class="metric-row" onclick="openChart('${m.symbol}','${m.label}')">
     <div>
       <div class="metric-name">${m.label}</div>
       <div class="metric-sub">${m.sub}</div>${dateHint}
