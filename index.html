@@ -196,6 +196,57 @@
     .header { padding: 0 14px; }
     .container { padding: 14px; }
   }
+  /* ── チャートモーダル ── */
+.chart-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.chart-modal-overlay.open {
+  display: flex;
+}
+.chart-modal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  padding: 24px;
+  width: min(700px, 95vw);
+  position: relative;
+}
+.chart-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.chart-modal-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  color: var(--text-bright);
+}
+.chart-modal-close {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  font-size: 16px;
+  width: 28px; height: 28px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.chart-modal-close:hover { color: var(--text-bright); border-color: var(--text-bright); }
+.chart-loading {
+  text-align: center;
+  padding: 40px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  animation: blink 1.5s infinite;
+}
+.metric-row { cursor: pointer; }
+.metric-row:hover .metric-name { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -810,5 +861,106 @@ function loadManualInputs() {
 // ページ読み込み時に保存済みデータを復元
 loadManualInputs();
 </script>
+  <!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- チャートモーダル -->
+<div class="chart-modal-overlay" id="chartOverlay" onclick="closeChart(event)">
+  <div class="chart-modal">
+    <div class="chart-modal-header">
+      <div class="chart-modal-title" id="chartTitle">--</div>
+      <button class="chart-modal-close" onclick="closeChartBtn()">✕</button>
+    </div>
+    <div id="chartBody">
+      <div class="chart-loading">データ取得中...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── チャート表示 ──
+let chartInstance = null;
+
+async function openChart(symbol, label) {
+  document.getElementById('chartTitle').textContent = `${label}  —  過去3ヶ月`;
+  document.getElementById('chartBody').innerHTML = '<div class="chart-loading">データ取得中...</div>';
+  document.getElementById('chartOverlay').classList.add('open');
+
+  try {
+    const res = await fetch(`/api/history?symbol=${encodeURIComponent(symbol)}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+
+    const labels = json.data.map(d => d.date);
+    const values = json.data.map(d => d.value);
+    const first  = values[0];
+    const last   = values[values.length - 1];
+    const isUp   = last >= first;
+    const color  = isUp ? '#00e676' : '#ff4444';
+
+    document.getElementById('chartBody').innerHTML = '<canvas id="chartCanvas" height="200"></canvas>';
+
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+    chartInstance = new Chart(document.getElementById('chartCanvas'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          borderColor: color,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          fill: true,
+          backgroundColor: isUp ? 'rgba(0,230,118,0.08)' : 'rgba(255,68,68,0.08)',
+          tension: 0.3,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.parsed.y.toFixed(2)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: '#5a7080',
+              font: { family: 'DM Mono', size: 10 },
+              maxTicksLimit: 6,
+            },
+            grid: { color: 'rgba(30,42,53,0.8)' }
+          },
+          y: {
+            ticks: {
+              color: '#5a7080',
+              font: { family: 'DM Mono', size: 10 },
+            },
+            grid: { color: 'rgba(30,42,53,0.8)' }
+          }
+        }
+      }
+    });
+  } catch(e) {
+    document.getElementById('chartBody').innerHTML =
+      `<div class="chart-loading">取得失敗: ${e.message}</div>`;
+  }
+}
+
+function closeChart(e) {
+  if (e.target === document.getElementById('chartOverlay')) closeChartBtn();
+}
+
+function closeChartBtn() {
+  document.getElementById('chartOverlay').classList.remove('open');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+}
+</script>
+
 </body>
 </html>
