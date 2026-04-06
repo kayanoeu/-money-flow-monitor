@@ -1,6 +1,6 @@
 const YAHOO_MAP = {
   'DXY':'DX-Y.NYB','SOX':'^SOX','XAU/USD':'GC=F','XCU/USD':'HG=F',
-  'XBR/USD':'BZ=F','JP225':'^N225','TIP':'TIP','GLD':'GLD','HYG':'HYG',
+  'WTI/USD':'CL=F',
   'JNK':'JNK','TLT':'TLT','SHY':'SHY','LQD':'LQD','XLK':'XLK','XLF':'XLF',
   'XLE':'XLE','XLU':'XLU','IWF':'IWF','MTUM':'MTUM','EWJ':'EWJ','DXJ':'DXJ',
   'IWM':'IWM','QUAL':'QUAL','USMV':'USMV',
