@@ -674,55 +674,154 @@ async function loadTdLayer(metricsKey, listId, scoreId) {
   return { total, max: metrics.length };
 }
 
+// ── L1：流動性バイアス乗数を計算（スコア対象外） ──
 async function loadL1() {
-  // TDメトリクス
-  const tdRes = await loadTdLayer('l1', 'l1-list', null);
-  // FREDメトリクス（追記）
-  const fredMetrics = [...FRED_METRICS.l1, ...FRED_METRICS.l1_balancesheet];
-  const fredResults = await Promise.all(fredMetrics.map(async m => ({
-    ...m, data: await fetchFred(m.series_id, m.scale)
-  })));
-  const listEl = document.getElementById('l1-list');
-  listEl.innerHTML += fredResults.map(r => makeRow(r, r.data)).join('');
-  const fredScores = fredResults.map(r => signal(r.data?.changePct, r.dir));
-  const total = tdRes.total + fredScores.reduce((a, b) => a + b, 0);
-  const max   = tdRes.max + fredMetrics.length;
-  setLayerScore('l1-score', total, max);
+  const results = await Promise.all(
+    FRED_METRICS.l1_bias.map(async m => ({
+      ...m, data: await fetchFred(m.series_id, m.scale)
+    }))
+  );
+
+  // 各指標の絶対変化量でシグナル判定
+  const signals = results.map(r => {
+    if (!r.data) return 0;
+    return signalAbs(r.data.change, r.dir, r.thr);
+  });
+  const sum = signals.reduce((a, b) => a + b, 0);
+
+  // 乗数決定
+  let bias, biasLabel;
+  if (sum >= 2)       { bias = 1.2; biasLabel = '拡張中 ×1.2'; }
+  else if (sum <= -2) { bias = 0.8; biasLabel = '収縮中 ×0.8'; }
+  else                { bias = 1.0; biasLabel = '横ばい ×1.0'; }
+
+  // L1パネルに表示
+  const el = document.getElementById('l1-list');
+  el.innerHTML = results.map(r => makeRow(r, r.data, false)).join('');
+
+  // バイアス表示
+  const scoreEl = document.getElementById('l1-score');
+  scoreEl.textContent = biasLabel;
+  scoreEl.style.color = bias > 1 ? 'var(--green)' : bias < 1 ? 'var(--red)' : 'var(--yellow)';
+
+  // ミニカード更新
+  const v = document.getElementById('sc-l1-v');
+  const b = document.getElementById('sc-l1-b');
+  v.textContent = biasLabel.split(' ')[0];
+  v.style.color = scoreEl.style.color;
+  b.style.width = bias > 1 ? '75%' : bias < 1 ? '25%' : '50%';
+  b.style.background = scoreEl.style.color;
+
+  return { bias, total: sum, max: results.length };
+}
+
+// ── L2：クレジット/ボラ ──
+async function loadL2() {
+  // スコア対象
+  const scoreMetrics = TD_METRICS.l2;
+  const scoreResults = await Promise.all(
+    scoreMetrics.map(async m => ({ ...m, data: await fetchQuote(m.symbol) }))
+  );
+
+  // FREDスプレッド（スコア対象）
+  const spreadResults = await Promise.all(
+    FRED_METRICS.l2_spread.map(async m => ({ ...m, data: await fetchFred(m.series_id, m.scale) }))
+  );
+
+  // 文脈情報
+  const ctxTd = await Promise.all(
+    TD_METRICS.l2_context.map(async m => ({ ...m, data: await fetchQuote(m.symbol) }))
+  );
+  const ctxFred = await Promise.all(
+    FRED_METRICS.l2_context.map(async m => ({ ...m, data: await fetchFred(m.series_id, m.scale) }))
+  );
+
+  // VIX絶対水準ボーナス
+  const vixData = scoreResults.find(r => r.id === 'VIX')?.data;
+  const vixBonus = vixLevelBonus(vixData?.last);
+
+  // スコア計算
+  const scores = [
+    ...scoreResults.map(r => signal(r.data?.changePct, r.dir, r.thr)),
+    ...spreadResults.map(r => signalAbs(r.data?.change, r.dir, r.thr)),
+    vixBonus,
+  ];
+  const total = scores.reduce((a, b) => a + b, 0);
+  const max = scoreMetrics.length + FRED_METRICS.l2_spread.length + 1;
+
+  // 表示
+  const el = document.getElementById('l2-list');
+  el.innerHTML = [
+    ...scoreResults.map(r => makeRow(r, r.data, true)),
+    ...spreadResults.map(r => makeRow(r, r.data, true)),
+    `<div style="padding:6px 16px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:0.08em;border-top:1px solid var(--border);">── 文脈情報（スコア非対象）──</div>`,
+    ...ctxTd.map(r => makeRow(r, r.data, false)),
+    ...ctxFred.map(r => makeRow(r, r.data, false)),
+  ].join('');
+
+  setLayerScore('l2-score', total, max);
   return { total, max, weight: 1.2 };
 }
 
-async function loadL2() {
-  const tdRes = await loadTdLayer('l2', 'l2-list', null);
-  const fredResults = await Promise.all(FRED_METRICS.l2.map(async m => ({
-    ...m, data: await fetchFred(m.series_id, m.scale)
-  })));
-  const listEl = document.getElementById('l2-list');
-  listEl.innerHTML += fredResults.map(r => makeRow(r, r.data)).join('');
-  const fredScores = fredResults.map(r => signal(r.data?.changePct, r.dir));
-  const total = tdRes.total + fredScores.reduce((a, b) => a + b, 0);
-  const max   = tdRes.max + FRED_METRICS.l2.length;
-  setLayerScore('l2-score', total, max);
-  return { total, max, weight: 1.0 };
-}
-
+// ── L3：クロスアセット ──
 async function loadL3() {
-  return { ...(await loadTdLayer('l3', 'l3-list', 'l3-score')), weight: 0.8 };
+  const scoreResults = await Promise.all(
+    TD_METRICS.l3.map(async m => ({ ...m, data: await fetchQuote(m.symbol) }))
+  );
+  const ctxResults = await Promise.all(
+    TD_METRICS.l3_context.map(async m => ({ ...m, data: await fetchQuote(m.symbol) }))
+  );
+
+  const scores = scoreResults.map(r => signal(r.data?.changePct, r.dir, r.thr));
+  const total = scores.reduce((a, b) => a + b, 0);
+  const max = TD_METRICS.l3.length;
+
+  const el = document.getElementById('l3-list');
+  el.innerHTML = [
+    ...scoreResults.map(r => makeRow(r, r.data, true)),
+    `<div style="padding:6px 16px;font-family:'DM Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:0.08em;border-top:1px solid var(--border);">── 文脈情報（スコア非対象）──</div>`,
+    ...ctxResults.map(r => makeRow(r, r.data, false)),
+  ].join('');
+
+  setLayerScore('l3-score', total, max);
+  return { total, max, weight: 0.8 };
 }
 
+// ── L4：セクター12種 ──
 async function loadL4() {
-  return { ...(await loadTdLayer('l4', 'l4-list', 'l4-score')), weight: 1.0 };
+  const results = await Promise.all(
+    TD_METRICS.l4.map(async m => ({ ...m, data: await fetchQuote(m.symbol) }))
+  );
+  const scores = results.map(r => signal(r.data?.changePct, r.dir, r.thr));
+  const total = scores.reduce((a, b) => a + b, 0);
+  const max = TD_METRICS.l4.length;
+
+  document.getElementById('l4-list').innerHTML =
+    results.map(r => makeRow(r, r.data, true)).join('');
+
+  setLayerScore('l4-score', total, max);
+  return { total, max, weight: 0.7 };
 }
 
+// ── L5：日本フロー ──
 async function loadL5() {
   const [idxR, carryR, facR] = await Promise.all([
-    loadTdLayer('l5_index',  'l5-index-list',  null),
-    loadTdLayer('l5_carry',  'l5-carry-list',  null),
-    loadTdLayer('l5_factor', 'l5-factor-list', null),
+    Promise.all(TD_METRICS.l5_index.map(async m => ({ ...m, data: await fetchQuote(m.symbol) }))),
+    Promise.all(TD_METRICS.l5_carry.map(async m => ({ ...m, data: await fetchQuote(m.symbol) }))),
+    Promise.all(TD_METRICS.l5_factor.map(async m => ({ ...m, data: await fetchQuote(m.symbol) }))),
   ]);
-  const total = idxR.total + carryR.total + facR.total;
-  const max   = idxR.max   + carryR.max   + facR.max;
+
+  document.getElementById('l5-index-list').innerHTML = idxR.map(r => makeRow(r, r.data, true)).join('');
+  document.getElementById('l5-carry-list').innerHTML = carryR.map(r => makeRow(r, r.data, true)).join('');
+  document.getElementById('l5-factor-list').innerHTML = facR.map(r => makeRow(r, r.data, true)).join('');
+
+  const all = [...idxR, ...carryR, ...facR];
+  const scores = all.map(r => signal(r.data?.changePct, r.dir, r.thr));
+  const total = scores.reduce((a, b) => a + b, 0);
+  const max = all.length;
+
   setLayerScore('l5-score', total, max);
-  return { total, max, weight: 0.9 };
+  return { total, max, weight: 1.5 };
 }
 
 function setLayerScore(id, total, max) {
