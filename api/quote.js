@@ -1,10 +1,10 @@
 const YAHOO_MAP = {
-  'DXY':'DX-Y.NYB','SOX':'^SOX','XAU/USD':'GC=F','XCU/USD':'HG=F',
+  'BTC/USD':'BTC-USD',
   'WTI/USD':'CL=F',
-  'JNK':'JNK','TLT':'TLT','SHY':'SHY','LQD':'LQD','XLK':'XLK','XLF':'XLF',
-  'XLE':'XLE','XLU':'XLU','IWF':'IWF','MTUM':'MTUM','EWJ':'EWJ','DXJ':'DXJ',
-  'IWM':'IWM','QUAL':'QUAL','USMV':'USMV',
-  'USD/JPY':'USDJPY=X','AUD/JPY':'AUDJPY=X','EUR/JPY':'EURJPY=X','CHF/JPY':'CHFJPY=X',
+  'XCU/USD':'HG=F',
+  'XLI':'XLI','XLB':'XLB','XLV':'XLV',
+  'XLY':'XLY','XLP':'XLP','XLC':'XLC','XLRE':'XLRE',
+  '^VIX':'%5EVIX','^MOVE':'%5EMOVE',
 };
 
 async function fromYahoo(symbol) {
