@@ -458,70 +458,86 @@
 
 // Twelve Data経由（/api/quote?symbol=XXX）
 const TD_METRICS = {
-  l1: [
-    { id:'DXY',    symbol:'DXY',      label:'DXY',      sub:'米ドル指数',                   dir:'down', fmt:'n2' },
-    { id:'USDJPY', symbol:'USD/JPY',  label:'USD/JPY',  sub:'円安=流動性拡張の代理',        dir:'up',   fmt:'n2' },
-    { id:'TIP',    symbol:'TIP',      label:'TIP',      sub:'米実質金利ETF（代理）',        dir:'up',   fmt:'n2' },
-    { id:'GLD',    symbol:'GLD',      label:'GLD',      sub:'ゴールドETF',                  dir:'up',   fmt:'n2' },
-    { id:'HYG',    symbol:'HYG',      label:'HYG',      sub:'HY Bond ETF（クレジット代理）',dir:'up',   fmt:'n2' },
-  ],
+  // ── L2 クレジット/ボラ（スコア対象） ──
   l2: [
-    { id:'LQD',  symbol:'LQD',  label:'LQD', sub:'IG Bond ETF', dir:'up', fmt:'n2' },
-    { id:'JNK',  symbol:'JNK',  label:'JNK', sub:'HY Bond ETF', dir:'up', fmt:'n2' },
-    { id:'TLT',  symbol:'TLT',  label:'TLT', sub:'長期国債ETF',  dir:'up', fmt:'n2' },
-    { id:'SHY',  symbol:'SHY',  label:'SHY', sub:'短期国債ETF',  dir:'up', fmt:'n2' },
+    { id:'HYG',  symbol:'HYG',  label:'HYG',  sub:'HY Bond ETF',    dir:'down', fmt:'n2', thr:0.3 },
+    { id:'LQD',  symbol:'LQD',  label:'LQD',  sub:'IG Bond ETF',    dir:'down', fmt:'n2', thr:0.3 },
+    { id:'VIX',  symbol:'^VIX', label:'VIX',  sub:'恐怖指数',        dir:'down', fmt:'n1', thr:1.0 },
+    { id:'MOVE', symbol:'^MOVE',label:'MOVE', sub:'債券ボラ指数',    dir:'down', fmt:'n1', thr:3.0 },
   ],
+  // ── L2 文脈情報（表示のみ・スコア非対象） ──
+  l2_context: [
+    { id:'TLT',  symbol:'TLT',  label:'TLT',  sub:'長期国債ETF',     dir:'up',  fmt:'n2', thr:0.3 },
+    { id:'SHY',  symbol:'SHY',  label:'SHY',  sub:'短期国債ETF',     dir:'up',  fmt:'n2', thr:0.3 },
+  ],
+  // ── L3 クロスアセット（スコア対象） ──
   l3: [
-    { id:'GOLD', symbol:'XAU/USD', label:'Gold',      sub:'ゴールド現物',  dir:'up', fmt:'n0' },
-    { id:'COP',  symbol:'XCU/USD', label:'Copper',    sub:'銅現物',        dir:'up', fmt:'n3' },
-    { id:'OIL',  symbol:'WTI/USD', label:'Oil (WTI)', sub:'WTI原油',  dir:'up', fmt:'n2' },
+    { id:'COP',  symbol:'XCU/USD', label:'Copper', sub:'銅（景気先行）', dir:'up', fmt:'n3', thr:0.5 },
+    { id:'BTC',  symbol:'BTC/USD', label:'BTC',    sub:'リスク選好先行', dir:'up', fmt:'n0', thr:2.0 },
   ],
+  // ── L3 文脈情報（表示のみ・スコア非対象） ──
+  l3_context: [
+    { id:'GOLD', symbol:'XAU/USD', label:'Gold',     sub:'金（文脈のみ）', dir:'up', fmt:'n0', thr:0.3 },
+    { id:'OIL',  symbol:'WTI/USD', label:'Oil(WTI)', sub:'原油（文脈のみ）',dir:'up', fmt:'n2', thr:0.5 },
+    { id:'DXY',  symbol:'DXY',     label:'DXY',      sub:'ドル指数（文脈）',dir:'down',fmt:'n2', thr:0.3 },
+  ],
+  // ── L4 セクター12種（スコア対象） ──
   l4: [
-    { id:'SOX',  symbol:'SOX',  label:'SOX',  sub:'半導体指数',        dir:'up',   fmt:'n0' },
-    { id:'XLK',  symbol:'XLK',  label:'XLK',  sub:'Tech ETF',          dir:'up',   fmt:'n2' },
-    { id:'XLF',  symbol:'XLF',  label:'XLF',  sub:'Financial ETF',     dir:'up',   fmt:'n2' },
-    { id:'XLE',  symbol:'XLE',  label:'XLE',  sub:'Energy ETF',         dir:'up',   fmt:'n2' },
-    { id:'XLU',  symbol:'XLU',  label:'XLU',  sub:'Utilities（防御）',  dir:'down', fmt:'n2' },
-    { id:'IWF',  symbol:'IWF',  label:'IWF',  sub:'Growth ETF',         dir:'up',   fmt:'n2' },
-    { id:'MTUM', symbol:'MTUM', label:'MTUM', sub:'Momentum ETF',       dir:'up',   fmt:'n2' },
+    { id:'XLK',  symbol:'XLK',  label:'テクノロジー',   sub:'XLK',  dir:'up', fmt:'n2', thr:0.5 },
+    { id:'SOX',  symbol:'SOX',  label:'半導体',         sub:'SOX',  dir:'up', fmt:'n0', thr:0.5 },
+    { id:'XLF',  symbol:'XLF',  label:'金融',           sub:'XLF',  dir:'up', fmt:'n2', thr:0.5 },
+    { id:'XLE',  symbol:'XLE',  label:'エネルギー',     sub:'XLE',  dir:'up', fmt:'n2', thr:0.5 },
+    { id:'XLI',  symbol:'XLI',  label:'資本財',         sub:'XLI',  dir:'up', fmt:'n2', thr:0.5 },
+    { id:'XLB',  symbol:'XLB',  label:'素材',           sub:'XLB',  dir:'up', fmt:'n2', thr:0.5 },
+    { id:'XLV',  symbol:'XLV',  label:'ヘルスケア',     sub:'XLV',  dir:'up', fmt:'n2', thr:0.5 },
+    { id:'XLY',  symbol:'XLY',  label:'一般消費財',     sub:'XLY',  dir:'up', fmt:'n2', thr:0.5 },
+    { id:'XLP',  symbol:'XLP',  label:'生活必需品',     sub:'XLP',  dir:'down',fmt:'n2', thr:0.5 },
+    { id:'XLU',  symbol:'XLU',  label:'公益',           sub:'XLU',  dir:'down',fmt:'n2', thr:0.5 },
+    { id:'XLC',  symbol:'XLC',  label:'通信・メディア', sub:'XLC',  dir:'up', fmt:'n2', thr:0.5 },
+    { id:'XLRE', symbol:'XLRE', label:'不動産',         sub:'XLRE', dir:'up', fmt:'n2', thr:0.5 },
   ],
+  // ── L5 日本インデックス（スコア対象） ──
   l5_index: [
-    { id:'N225', symbol:'JP225',  label:'Nikkei 225', sub:'日経平均',          dir:'up', fmt:'n0' },
-    { id:'EWJ',  symbol:'EWJ',    label:'EWJ',        sub:'日本株ETF(米上場)', dir:'up', fmt:'n2' },
-    { id:'DXJ',  symbol:'DXJ',    label:'DXJ',        sub:'円ヘッジ日本株',    dir:'up', fmt:'n2' },
+    { id:'N225', symbol:'JP225', label:'日経平均',     sub:'全体センチメント', dir:'up', fmt:'n0', thr:0.5 },
+    { id:'EWJ',  symbol:'EWJ',   label:'TOPIX proxy', sub:'市場全体資金量',   dir:'up', fmt:'n2', thr:0.5 },
+    { id:'DXJ',  symbol:'DXJ',   label:'グロース proxy',sub:'国内リスク選好', dir:'up', fmt:'n2', thr:0.5 },
   ],
+  // ── L5 円キャリー（スコア対象） ──
   l5_carry: [
-  { id:'USDJPY2', symbol:'USD/JPY', label:'USD/JPY', sub:'円キャリー基軸',  dir:'up', fmt:'n2' },
-  { id:'EURJPY',  symbol:'EUR/JPY', label:'EUR/JPY', sub:'コア円キャリー',  dir:'up', fmt:'n2' },
-  { id:'AUDJPY',  symbol:'AUD/JPY', label:'AUD/JPY', sub:'リスクオン円キャリー', dir:'up', fmt:'n2' },
-  { id:'CHFJPY',  symbol:'CHF/JPY', label:'CHF/JPY', sub:'リスクオフ指標',  dir:'down', fmt:'n2' },
-],
+    { id:'USDJPY', symbol:'USD/JPY', label:'ドル円',   sub:'輸出企業環境',        dir:'up',  fmt:'n2', thr:0.5 },
+    { id:'EURJPY', symbol:'EUR/JPY', label:'ユーロ円', sub:'コア円キャリー',      dir:'up',  fmt:'n2', thr:0.5 },
+    { id:'AUDJPY', symbol:'AUD/JPY', label:'豪ドル円', sub:'リスクオン円キャリー',dir:'up',  fmt:'n2', thr:0.5 },
+    { id:'CHFJPY', symbol:'CHF/JPY', label:'スイス円', sub:'リスクオフ指標',      dir:'down',fmt:'n2', thr:0.5 },
+  ],
+  // ── L5 ファクター（スコア対象） ──
   l5_factor: [
-    { id:'IWM',  symbol:'IWM',  label:'IWM',  sub:'小型株',      dir:'up',   fmt:'n2' },
-    { id:'QUAL', symbol:'QUAL', label:'QUAL', sub:'Quality ETF', dir:'up',   fmt:'n2' },
-    { id:'USMV', symbol:'USMV', label:'USMV', sub:'低ボラETF',   dir:'down', fmt:'n2' },
+    { id:'IWM',  symbol:'IWM',  label:'小型株',      sub:'IWM',  dir:'up',  fmt:'n2', thr:0.5 },
+    { id:'QUAL', symbol:'QUAL', label:'Quality',     sub:'QUAL', dir:'up',  fmt:'n2', thr:0.5 },
+    { id:'USMV', symbol:'USMV', label:'低ボラ',      sub:'USMV', dir:'down',fmt:'n2', thr:0.5 },
   ],
 };
 
 // FRED経由（/api/fred?series_id=XXX）
 // ※FREDは日次・週次更新なので1時間ごとの再取得でも値は変わらないことが多い
 const FRED_METRICS = {
-  l1: [
-    { id:'RRPONTSYD', series_id:'RRPONTSYD', label:'RRP',  sub:'逆レポ残高(十億ドル)', dir:'down', fmt:'n0', scale:1e-9 },
-    { id:'NFCI',      series_id:'NFCI',      label:'NFCI', sub:'金融環境指数(週次)',    dir:'down', fmt:'n3', scale:1 },
+  // L1 流動性（乗数用・スコア非対象）
+  l1_bias: [
+    { id:'RRPONTSYD', series_id:'RRPONTSYD', label:'RRP',    sub:'逆レポ残高(十億ドル)', dir:'down', fmt:'n0', scale:1e-9, thr:50  },
+    { id:'NFCI',      series_id:'NFCI',      label:'NFCI',   sub:'金融環境指数(週次)',    dir:'down', fmt:'n3', scale:1,   thr:0.05},
+    { id:'WALCL',     series_id:'WALCL',     label:'Fed BS', sub:'Fed資産(十億ドル)',     dir:'up',   fmt:'n0', scale:1,   thr:50  },
   ],
-  l2: [
-    { id:'DGS2',   series_id:'DGS2',           label:'US 2Y',   sub:'2年債利回り(%)',    dir:'down', fmt:'n2', scale:1 },
-    { id:'DGS10',  series_id:'DGS10',           label:'US 10Y',  sub:'10年債利回り(%)',   dir:'down', fmt:'n2', scale:1 },
-    { id:'T10Y2Y', series_id:'T10Y2Y',          label:'2s10s',   sub:'イールドカーブ(%)', dir:'up',   fmt:'n2', scale:1 },
-    { id:'HYSPREAD',series_id:'BAMLH0A0HYM2',   label:'HY Spread',sub:'HYスプレッド(bp)',dir:'down', fmt:'n2', scale:1 },
-    { id:'IGSPREAD',series_id:'BAMLC0A0CM',     label:'IG Spread',sub:'IGスプレッド(bp)',dir:'down', fmt:'n2', scale:1 },
+  // L2 金利（文脈情報）
+  l2_context: [
+    { id:'DGS2',    series_id:'DGS2',        label:'US 2Y',    sub:'2年債(%)',    dir:'down', fmt:'n2', scale:1, thr:0.05 },
+    { id:'DGS10',   series_id:'DGS10',       label:'US 10Y',   sub:'10年債(%)',   dir:'down', fmt:'n2', scale:1, thr:0.05 },
+    { id:'T10Y2Y',  series_id:'T10Y2Y',      label:'2s10s',    sub:'カーブ(%)',   dir:'up',   fmt:'n2', scale:1, thr:0.05 },
   ],
-  l1_balancesheet: [
-    { id:'WALCL', series_id:'WALCL', label:'Fed BS', sub:'Fed資産(十億ドル)', dir:'up', fmt:'n0', scale:1 },
+  // L2 スプレッド（スコア対象・絶対値閾値5bp）
+  l2_spread: [
+    { id:'HYSPREAD', series_id:'BAMLH0A0HYM2', label:'HY Spread', sub:'HYスプレッド(bp)', dir:'down', fmt:'n2', scale:1, thr:0.05 },
+    { id:'IGSPREAD', series_id:'BAMLC0A0CM',   label:'IG Spread', sub:'IGスプレッド(bp)', dir:'down', fmt:'n2', scale:1, thr:0.02 },
   ],
 };
-
 // ─────────────────────────────────────────────
 // データ取得
 // ─────────────────────────────────────────────
@@ -578,11 +594,28 @@ function fmt(v, f) {
   return v.toString();
 }
 
-function signal(pct, dir) {
-  if (pct == null) return 0;
-  const t = 0.3;
-  if (dir === 'up')   return pct >  t ? 1 : pct < -t ? -1 : 0;
-  if (dir === 'down') return pct < -t ? 1 : pct >  t ? -1 : 0;
+// threshold: 閾値(%)、absMode: 絶対値モード（FRED用）
+function signal(pct, dir, threshold = 0.3) {
+  if (pct == null || isNaN(pct)) return 0;
+  if (dir === 'up')   return pct >  threshold ? 1 : pct < -threshold ? -1 : 0;
+  if (dir === 'down') return pct < -threshold ? 1 : pct >  threshold ? -1 : 0;
+  return 0;
+}
+
+// FRED指標用：前日比%ではなく絶対変化量で判定
+function signalAbs(change, dir, threshold) {
+  if (change == null || isNaN(change)) return 0;
+  if (dir === 'up')   return change >  threshold ? 1 : change < -threshold ? -1 : 0;
+  if (dir === 'down') return change < -threshold ? 1 : change >  threshold ? -1 : 0;
+  return 0;
+}
+
+// VIX絶対水準補正
+function vixLevelBonus(level) {
+  if (level == null) return 0;
+  if (level <= 15) return 1;
+  if (level >= 30) return -1;
+  if (level >= 20) return -0;
   return 0;
 }
 
