@@ -1,10 +1,28 @@
 const YAHOO_MAP = {
-  'BTC/USD':'BTC-USD',
-  'WTI/USD':'CL=F',
-  'XCU/USD':'HG=F',
-  'XLI':'XLI','XLB':'XLB','XLV':'XLV',
-  'XLY':'XLY','XLP':'XLP','XLC':'XLC','XLRE':'XLRE',
-  '^VIX':'%5EVIX','^MOVE':'%5EMOVE',
+  // ドル・指数
+  'DXY':     'DX-Y.NYB',
+  'SOX':     '^SOX',
+  'JP225':   '^N225',
+  // コモディティ
+  'XAU/USD': 'GC=F',
+  'XCU/USD': 'HG=F',
+  'WTI/USD': 'CL=F',
+  // 暗号資産
+  'BTC/USD': 'BTC-USD',
+  // ボラ指数
+  '^VIX':    '^VIX',
+  '^MOVE':   '^MOVE',
+  // 債券ETF
+  'HYG':'HYG','JNK':'JNK','TLT':'TLT','SHY':'SHY','LQD':'LQD',
+  // セクターETF（12種）
+  'XLK':'XLK','XLF':'XLF','XLE':'XLE','XLI':'XLI','XLB':'XLB',
+  'XLV':'XLV','XLY':'XLY','XLP':'XLP','XLU':'XLU','XLC':'XLC','XLRE':'XLRE',
+  // ファクターETF
+  'IWF':'IWF','IWM':'IWM','QUAL':'QUAL','USMV':'USMV','MTUM':'MTUM',
+  'EWJ':'EWJ','DXJ':'DXJ',
+  // FX
+  'USD/JPY':'USDJPY=X','AUD/JPY':'AUDJPY=X',
+  'EUR/JPY':'EURJPY=X','CHF/JPY':'CHFJPY=X',
 };
 
 async function fromYahoo(symbol) {
