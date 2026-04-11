@@ -619,19 +619,22 @@ function vixLevelBonus(level) {
   return 0;
 }
 
-function makeRow(m, data) {
-  const val   = data ? fmt(data.last, m.fmt) : '--';
-  const pct   = data ? data.changePct : null;
-  const sig   = signal(pct, m.dir);
+function makeRow(m, data, isScore = true) {
+  const val    = data ? fmt(data.last, m.fmt) : '--';
+  const pct    = data ? data.changePct : null;
+  const sig    = isScore ? signal(pct, m.dir, m.thr ?? 0.3) : 0;
   const pctStr = pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : '--';
   const cls    = pct == null ? 'neu' : pct > 0 ? 'pos' : pct < 0 ? 'neg' : 'neu';
-  const sigCls = sig === 1 ? 'sig-on' : sig === -1 ? 'sig-off' : data ? 'sig-neut' : 'sig-load';
-  const sigTxt = sig === 1 ? 'ON' : sig === -1 ? 'OFF' : data ? 'NEU' : '…';
+  const sigCls = !isScore ? 'sig-load'
+               : sig === 1 ? 'sig-on' : sig === -1 ? 'sig-off' : data ? 'sig-neut' : 'sig-load';
+  const sigTxt = !isScore ? 'CTX'
+               : sig === 1 ? 'ON' : sig === -1 ? 'OFF' : data ? 'NEU' : '…';
   const barPct = data ? Math.min(100, Math.max(0, (data.changePct + 3) / 6 * 100)) : 50;
-  const barCol = sig === 1 ? 'var(--green)' : sig === -1 ? 'var(--red)' : 'var(--yellow)';
+  const barCol = sig === 1 ? 'var(--green)' : sig === -1 ? 'var(--red)' : isScore ? 'var(--yellow)' : 'var(--border2)';
   const dateHint = data?.date ? `<div class="metric-sub">${data.date}</div>` : '';
+  const rowStyle = isScore ? '' : 'opacity:0.55;';
 
-  return `<div class="metric-row" onclick="openChart('${m.symbol}','${m.label}')">
+  return `<div class="metric-row" style="${rowStyle}" onclick="openChart('${m.symbol ?? ''}','${m.label}')">
     <div>
       <div class="metric-name">${m.label}</div>
       <div class="metric-sub">${m.sub}</div>${dateHint}
@@ -834,23 +837,60 @@ function setLayerScore(id, total, max) {
 // レジーム＆テーマ生成
 // ─────────────────────────────────────────────
 
-function updateRegime(layers) {
-  const tw = layers.reduce((a, r) => a + r.total * r.weight, 0);
-  const mw = layers.reduce((a, r) => a + r.max   * r.weight, 0);
-  const pct = (tw + mw) / (2 * mw);
+function updateRegime(l1Result, layers) {
+  const bias = l1Result.bias;
+
+  // L2〜L5の重み付きスコア
+  const rawScore = layers.reduce((a, r) => a + r.total * r.weight, 0);
+  const rawMax   = layers.reduce((a, r) => a + r.max   * r.weight, 0);
+
+  // L1バイアスを乗数として適用
+  const finalScore = rawScore * bias;
+
+  // -10〜+10に正規化
+  const normalized = Math.max(-10, Math.min(10, (finalScore / rawMax) * 10));
+  const pct = (normalized + 10) / 20; // 0〜1
 
   document.getElementById('regimeScore').textContent =
-    `${tw > 0 ? '+' : ''}${tw.toFixed(1)} / ${mw.toFixed(1)}`;
+    `${normalized > 0 ? '+' : ''}${normalized.toFixed(1)} / 10`;
   document.getElementById('regimeThumb').style.left = `${pct * 100}%`;
 
+  // 5段階判定
   const tags = document.getElementById('regimeTags');
-  if (pct > 0.6)      tags.innerHTML = '<span class="regime-tag tag-bull">RISK-ON</span><span class="regime-tag tag-bull">強気相場</span>';
-  else if (pct < 0.4) tags.innerHTML = '<span class="regime-tag tag-bear">RISK-OFF</span><span class="regime-tag tag-bear">弱気圧力</span>';
-  else                tags.innerHTML = '<span class="regime-tag tag-neut">NEUTRAL</span><span class="regime-tag tag-neut">方向感なし</span>';
+  let regime, tagHtml, sectors, risk;
 
-  // ミニスコアカード更新
+  if (normalized >= 7) {
+    regime = '強気';
+    tagHtml = '<span class="regime-tag tag-bull">強気</span><span class="regime-tag tag-bull">フルポジ可</span>';
+    sectors = ['半導体', '輸出株', 'テック', 'グロース', '商社'];
+    risk = '急激な円高・金利上昇';
+  } else if (normalized >= 3) {
+    regime = '弱気味強気';
+    tagHtml = '<span class="regime-tag tag-bull">弱気味強気</span><span class="regime-tag tag-neut">ロングバイアス</span>';
+    sectors = ['輸出株', 'テック', 'バリュー'];
+    risk = '急落リスクに注意';
+  } else if (normalized >= -3) {
+    regime = '中立';
+    tagHtml = '<span class="regime-tag tag-neut">NEUTRAL</span><span class="regime-tag tag-neut">様子見</span>';
+    sectors = ['高配当', '低ボラ', 'バランス'];
+    risk = '方向感なし・ボラ注意';
+  } else if (normalized >= -7) {
+    regime = '弱気味弱気';
+    tagHtml = '<span class="regime-tag tag-bear">弱気味弱気</span><span class="regime-tag tag-neut">慎重参加</span>';
+    sectors = ['ディフェンシブ', '高配当', '公益'];
+    risk = '世界景気減速';
+  } else {
+    regime = '強い弱気';
+    tagHtml = '<span class="regime-tag tag-bear">強い弱気</span><span class="regime-tag tag-bear">ノートレード推奨</span>';
+    sectors = ['現金', 'ショート検討'];
+    risk = '信用収縮・景気後退';
+  }
+
+  tags.innerHTML = tagHtml;
+
+  // ミニスコアカード（L2〜L5）
   layers.forEach((r, i) => {
-    const idx = i + 1;
+    const idx = i + 2; // L2から始まる
     const v = document.getElementById(`sc-l${idx}-v`);
     const b = document.getElementById(`sc-l${idx}-b`);
     if (!v) return;
@@ -858,26 +898,20 @@ function updateRegime(layers) {
     v.style.color = r.total > 0 ? 'var(--green)' : r.total < 0 ? 'var(--red)' : 'var(--yellow)';
     const bp = ((r.total + r.max) / (2 * r.max)) * 100;
     b.style.width = `${Math.min(100, Math.max(0, bp))}%`;
-    b.style.background = r.total > 0 ? 'var(--green)' : r.total < 0 ? 'var(--red)' : 'var(--yellow)';
+    b.style.background = v.style.color;
   });
 
   // テーマ生成
-  const isOn  = pct > 0.6;
-  const isOff = pct < 0.4;
-  const regime  = isOn ? 'Risk-On 優位' : isOff ? 'Risk-Off 優位' : 'Neutral / 様子見';
-  const sectors = isOn  ? ['半導体', '輸出株', 'グロース', '商社', 'テック']
-                : isOff ? ['内需株', '銀行', '高配当', 'ディフェンシブ', '公益']
-                :         ['バランス', '高配当', '低ボラ'];
-  const risk = isOn  ? '急激な円高・金利上昇'
-             : isOff ? '世界景気後退・信用収縮'
-             :         '方向感なし・ボラ拡大注意';
-
   document.getElementById('theme-regime').textContent = regime;
-  document.getElementById('theme-regime-sectors').innerHTML = sectors.map(s => `<span class="sector-tag">${s}</span>`).join('');
-  document.getElementById('theme-sector').textContent = isOn ? '輸出・テク優位' : isOff ? 'ディフェンシブ優位' : 'セクター中立';
-  document.getElementById('theme-sector-tags').innerHTML = sectors.map(s => `<span class="sector-tag">${s}</span>`).join('');
+  document.getElementById('theme-regime-sectors').innerHTML =
+    sectors.map(s => `<span class="sector-tag">${s}</span>`).join('');
+  document.getElementById('theme-sector').textContent =
+    normalized >= 3 ? '輸出・テク優位' : normalized <= -3 ? 'ディフェンシブ優位' : 'セクター中立';
+  document.getElementById('theme-sector-tags').innerHTML =
+    sectors.map(s => `<span class="sector-tag">${s}</span>`).join('');
   document.getElementById('theme-risk').textContent = risk;
-  document.getElementById('theme-risk-tags').innerHTML = `<span class="sector-tag" style="border-color:var(--red);color:var(--red);background:var(--red-dim)">${risk}</span>`;
+  document.getElementById('theme-risk-tags').innerHTML =
+    `<span class="sector-tag" style="border-color:var(--red);color:var(--red);background:var(--red-dim)">${risk}</span>`;
 }
 
 // ─────────────────────────────────────────────
@@ -891,10 +925,11 @@ async function refreshAll() {
   Object.keys(cache).forEach(k => delete cache[k]);
 
   try {
-    const [l1r, l2r, l3r, l4r, l5r] = await Promise.all([
-      loadL1(), loadL2(), loadL3(), loadL4(), loadL5()
+    const l1Result = await loadL1();
+    const [l2r, l3r, l4r, l5r] = await Promise.all([
+      loadL2(), loadL3(), loadL4(), loadL5()
     ]);
-    updateRegime([l1r, l2r, l3r, l4r, l5r]);
+    updateRegime(l1Result, [l2r, l3r, l4r, l5r]);
   } catch(e) {
     console.error('refreshAll error:', e);
   }
