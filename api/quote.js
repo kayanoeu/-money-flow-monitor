@@ -20,6 +20,8 @@ const YAHOO_MAP = {
   // ファクターETF
   'IWF':'IWF','IWM':'IWM','QUAL':'QUAL','USMV':'USMV','MTUM':'MTUM',
   'EWJ':'EWJ','DXJ':'DXJ',
+  // 日経
+  'DBJP':'DBJP',
   // FX
   'USD/JPY':'USDJPY=X','AUD/JPY':'AUDJPY=X',
   'EUR/JPY':'EURJPY=X','CHF/JPY':'CHFJPY=X',
