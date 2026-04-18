@@ -498,9 +498,9 @@ const TD_METRICS = {
   ],
   // ── L5 日本インデックス（スコア対象） ──
   l5_index: [
-    { id:'N225', symbol:'JP225', label:'日経平均',     sub:'全体センチメント', dir:'up', fmt:'n0', thr:0.5 },
-    { id:'EWJ',  symbol:'EWJ',   label:'TOPIX proxy', sub:'市場全体資金量',   dir:'up', fmt:'n2', thr:0.5 },
-    { id:'DXJ',  symbol:'DXJ',   label:'グロース proxy',sub:'国内リスク選好', dir:'up', fmt:'n2', thr:0.5 },
+    { id:'EWJ',  symbol:'EWJ',  label:'日経平均 proxy', sub:'EWJ（米上場・日本株）', dir:'up', fmt:'n2', thr:0.5 },
+    { id:'DXJ',  symbol:'DXJ',  label:'円ヘッジ日本株', sub:'DXJ（円ヘッジ）',       dir:'up', fmt:'n2', thr:0.5 },
+    { id:'DBJP', symbol:'DBJP', label:'TOPIX proxy',    sub:'DBJP（日本大型株）',    dir:'up', fmt:'n2', thr:0.5 },
   ],
   // ── L5 円キャリー（スコア対象） ──
   l5_carry: [
