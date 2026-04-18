@@ -522,10 +522,12 @@ const TD_METRICS = {
 const FRED_METRICS = {
   // L1 流動性（乗数用・スコア非対象）
   l1_bias: [
-    { id:'RRPONTSYD', series_id:'RRPONTSYD', label:'RRP',    sub:'逆レポ残高(十億ドル)', dir:'down', fmt:'n0', scale:1e-9, thr:50  },
-    { id:'NFCI',      series_id:'NFCI',      label:'NFCI',   sub:'金融環境指数(週次)',    dir:'down', fmt:'n3', scale:1,   thr:0.05},
-    { id:'WALCL',     series_id:'WALCL',     label:'Fed BS', sub:'Fed資産(十億ドル)',     dir:'up',   fmt:'n0', scale:1,   thr:50  },
-  ],
+  { id:'WALCL',     series_id:'WALCL',      label:'Fed BS',  sub:'FRB資産（十億ドル）',  dir:'up',   fmt:'n0', scale:1,   thr:50   },
+  { id:'ECBASSETSW',series_id:'ECBASSETSW', label:'ECB BS',  sub:'ECB資産（十億ユーロ）', dir:'up',   fmt:'n0', scale:1,   thr:50   },
+  { id:'JPNASSETS', series_id:'JPNASSETS',  label:'日銀 BS', sub:'日銀資産（十億円）',    dir:'up',   fmt:'n0', scale:1,   thr:1000 },
+  { id:'RRPONTSYD', series_id:'RRPONTSYD',  label:'RRP',     sub:'逆レポ残高（十億ドル）',dir:'down', fmt:'n0', scale:1e-9,thr:50   },
+  { id:'NFCI',      series_id:'NFCI',       label:'NFCI',    sub:'金融環境指数（週次）',  dir:'down', fmt:'n3', scale:1,   thr:0.05 },
+],
   // L2 金利（文脈情報）
   l2_context: [
     { id:'DGS2',    series_id:'DGS2',        label:'US 2Y',    sub:'2年債(%)',    dir:'down', fmt:'n2', scale:1, thr:0.05 },
@@ -688,22 +690,31 @@ async function loadL1() {
     }))
   );
 
-  // 各指標の絶対変化量でシグナル判定
-  const signals = results.map(r => {
-    if (!r.data) return 0;
-    return signalAbs(r.data.change, r.dir, r.thr);
-  });
-  const sum = signals.reduce((a, b) => a + b, 0);
+  // 3中銀BSのシグナルを個別に取得
+  const fedSignal  = signalAbs(results.find(r=>r.id==='WALCL')?.data?.change,      'up',   50);
+  const ecbSignal  = signalAbs(results.find(r=>r.id==='ECBASSETSW')?.data?.change,  'up',   50);
+  const bojSignal  = signalAbs(results.find(r=>r.id==='JPNASSETS')?.data?.change,   'up',   1000);
+  const rrpSignal  = signalAbs(results.find(r=>r.id==='RRPONTSYD')?.data?.change,   'down', 50);
+  const nfciSignal = signalAbs(results.find(r=>r.id==='NFCI')?.data?.change,        'down', 0.05);
 
-  // 乗数決定
+  // 3中銀BSの拡張・収縮数をカウント
+  const bsExpanding   = [fedSignal, ecbSignal, bojSignal].filter(s => s ===  1).length;
+  const bsContracting = [fedSignal, ecbSignal, bojSignal].filter(s => s === -1).length;
+  const sum = fedSignal + ecbSignal + bojSignal + rrpSignal + nfciSignal;
+
+  // 乗数決定（仕様書準拠）
   let bias, biasLabel;
-  if (sum >= 2)       { bias = 1.2; biasLabel = '拡張中 ×1.2'; }
-  else if (sum <= -2) { bias = 0.8; biasLabel = '収縮中 ×0.8'; }
-  else                { bias = 1.0; biasLabel = '横ばい ×1.0'; }
+  if (bsExpanding >= 2 && rrpSignal >= 0 && nfciSignal >= 0) {
+    bias = 1.2; biasLabel = '拡張中 ×1.2';
+  } else if (bsContracting >= 2 || sum <= -2) {
+    bias = 0.8; biasLabel = '収縮中 ×0.8';
+  } else {
+    bias = 1.0; biasLabel = '横ばい ×1.0';
+  }
 
   // L1パネルに表示
-  const el = document.getElementById('l1-list');
-  el.innerHTML = results.map(r => makeRow(r, r.data, false)).join('');
+  document.getElementById('l1-list').innerHTML =
+    results.map(r => makeRow(r, r.data, false)).join('');
 
   // バイアス表示
   const scoreEl = document.getElementById('l1-score');
