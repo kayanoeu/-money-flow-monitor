@@ -498,9 +498,9 @@ const TD_METRICS = {
   ],
   // ── L5 日本インデックス（スコア対象） ──
   l5_index: [
-    { id:'EWJ',  symbol:'EWJ',  label:'日経平均 proxy', sub:'EWJ（米上場・日本株）', dir:'up', fmt:'n2', thr:0.5 },
-    { id:'DXJ',  symbol:'DXJ',  label:'円ヘッジ日本株', sub:'DXJ（円ヘッジ）',       dir:'up', fmt:'n2', thr:0.5 },
-    { id:'DBJP', symbol:'DBJP', label:'TOPIX proxy',    sub:'DBJP（日本大型株）',    dir:'up', fmt:'n2', thr:0.5 },
+    { id:'N225', symbol:'^N225', label:'日経平均', sub:'Nikkei 225（円建て）', dir:'up', fmt:'n0', thr:0.5 },
+    { id:'EWJ',  symbol:'EWJ',   label:'EWJ',     sub:'日本株ETF（米上場）',  dir:'up', fmt:'n2', thr:0.5 },
+    { id:'DXJ',  symbol:'DXJ',   label:'DXJ',     sub:'円ヘッジ日本株',       dir:'up', fmt:'n2', thr:0.5 },
   ],
   // ── L5 円キャリー（スコア対象） ──
   l5_carry: [
@@ -545,6 +545,9 @@ const FRED_METRICS = {
 const cache = {};
 const CACHE_TTL = 55 * 60 * 1000; // 55分
 
+
+
+  
 async function fetchQuote(symbol) {
   const key = `td:${symbol}`;
   if (cache[key] && Date.now() - cache[key].ts < CACHE_TTL) return cache[key].data;
