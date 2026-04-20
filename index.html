@@ -972,6 +972,15 @@ async function refreshAll() {
   } catch(e) {
     console.error('refreshAll error:', e);
   }
+  // 指標データをまとめてClaudeに渡す
+const allMetrics = {
+  l1: { bias: l1Result.bias, label: l1Result.biasLabel },
+  l2: { score: l2r.total, max: l2r.max },
+  l3: { score: l3r.total, max: l3r.max },
+  l4: { score: l4r.total, max: l4r.max },
+  l5: { score: l5r.total, max: l5r.max },
+};
+generateComment(l1Result, [l2r, l3r, l4r, l5r], allMetrics);
 
   const now = new Date();
   document.getElementById('lastUpdate').textContent =
@@ -1067,6 +1076,69 @@ function loadManualInputs() {
 
 // ページ読み込み時に保存済みデータを復元
 loadManualInputs();
+
+  // ─────────────────────────────────────────────
+// Claude AI コメント生成
+// ─────────────────────────────────────────────
+
+async function generateComment(l1Result, layers, allMetrics) {
+  const bodyEl = document.getElementById('ai-comment-body');
+  bodyEl.innerHTML = `<span style="color:var(--text-dim);font-family:'DM Mono',monospace;font-size:11px;animation:blink 1.5s infinite;">
+    ✦ Claude が市場環境を分析中...（20〜30秒かかります）
+  </span>`;
+
+  // スコアデータを整理
+  const scores = {
+    normalized: (() => {
+      const rawScore = layers.reduce((a, r) => a + r.total * r.weight, 0);
+      const rawMax   = layers.reduce((a, r) => a + r.max   * r.weight, 0);
+      const final = rawScore * l1Result.bias;
+      return Math.max(-10, Math.min(10, (final / rawMax) * 10));
+    })(),
+    regime: (() => {
+      const n = (() => {
+        const rawScore = layers.reduce((a, r) => a + r.total * r.weight, 0);
+        const rawMax   = layers.reduce((a, r) => a + r.max   * r.weight, 0);
+        return Math.max(-10, Math.min(10, (rawScore * l1Result.bias / rawMax) * 10));
+      })();
+      return n >= 7 ? '強気' : n >= 3 ? '弱気味強気' : n >= -3 ? '中立' : n >= -7 ? '弱気味弱気' : '強い弱気';
+    })(),
+    l1_bias: l1Result.biasLabel,
+    layers: layers.map((r, i) => ({
+      name: ['L2金利/クレジット','L3クロスアセット','L4セクター','L5日本フロー'][i],
+      score: r.total,
+      max: r.max,
+      weight: r.weight,
+    }))
+  };
+
+  try {
+    const response = await fetch('/api/comment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scores, metrics: allMetrics }),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+
+    // マークダウン的な装飾を簡易レンダリング
+    const formatted = data.comment
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text-bright)">$1</strong>')
+      .replace(/^→/gm, '<span style="color:var(--accent)">→</span>')
+      .replace(/^・/gm, '<span style="color:var(--text-dim)">・</span>');
+
+    bodyEl.innerHTML = formatted;
+    document.getElementById('ai-comment-time').textContent =
+      new Date().toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+
+  } catch(e) {
+    bodyEl.innerHTML = `<span style="color:var(--red);font-family:'DM Mono',monospace;font-size:11px;">
+      コメント生成失敗: ${e.message}
+    </span>`;
+    console.error('generateComment error:', e);
+  }
+}
 </script>
   <!-- Chart.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
