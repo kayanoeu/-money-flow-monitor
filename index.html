@@ -963,24 +963,28 @@ async function refreshAll() {
   btn.textContent = '取得中...';
   Object.keys(cache).forEach(k => delete cache[k]);
 
+  let l1Result, l2r, l3r, l4r, l5r;
+
   try {
-    const l1Result = await loadL1();
-    const [l2r, l3r, l4r, l5r] = await Promise.all([
+    l1Result = await loadL1();
+    [l2r, l3r, l4r, l5r] = await Promise.all([
       loadL2(), loadL3(), loadL4(), loadL5()
     ]);
     updateRegime(l1Result, [l2r, l3r, l4r, l5r]);
+
+    // 指標データをまとめてClaudeに渡す
+    const allMetrics = {
+      l1: { bias: l1Result.bias, label: l1Result.biasLabel },
+      l2: { score: l2r.total, max: l2r.max },
+      l3: { score: l3r.total, max: l3r.max },
+      l4: { score: l4r.total, max: l4r.max },
+      l5: { score: l5r.total, max: l5r.max },
+    };
+    generateComment(l1Result, [l2r, l3r, l4r, l5r], allMetrics);
+
   } catch(e) {
     console.error('refreshAll error:', e);
   }
-  // 指標データをまとめてClaudeに渡す
-const allMetrics = {
-  l1: { bias: l1Result.bias, label: l1Result.biasLabel },
-  l2: { score: l2r.total, max: l2r.max },
-  l3: { score: l3r.total, max: l3r.max },
-  l4: { score: l4r.total, max: l4r.max },
-  l5: { score: l5r.total, max: l5r.max },
-};
-generateComment(l1Result, [l2r, l3r, l4r, l5r], allMetrics);
 
   const now = new Date();
   document.getElementById('lastUpdate').textContent =
