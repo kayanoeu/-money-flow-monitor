@@ -3,7 +3,9 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   try {
-    const body = await req.json();
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = JSON.parse(Buffer.concat(chunks).toString());
     const { scores, metrics } = body;
 
     const prompt = buildPrompt(scores, metrics);
