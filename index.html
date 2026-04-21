@@ -1393,7 +1393,7 @@ async function fetchAndRenderStock(code, range) {
     stockChartRsi = new Chart(document.getElementById('stockRsiChart'), {
       type: 'line',
       data: {
-        labels,
+        data.map(d => new Date(d.date).getTime()),
         datasets: [{
           label: 'RSI(14)',
           data: rsi14,
@@ -1412,7 +1412,12 @@ async function fetchAndRenderStock(code, range) {
           annotation: {},
         },
         scales: {
-          x: { ticks: { ...tickStyle, maxTicksLimit: 8 }, grid: { color: gridColor } },
+         x: {
+  type: 'time',
+  time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
+  ticks: { ...tickStyle, maxTicksLimit: 8 },
+  grid: { color: gridColor },
+},
           y: {
             min: 0, max: 100,
             ticks: { ...tickStyle, stepSize: 25 },
@@ -1427,7 +1432,7 @@ async function fetchAndRenderStock(code, range) {
     stockChartVolume = new Chart(document.getElementById('stockVolChart'), {
       type: 'bar',
       data: {
-        labels,
+        data.map(d => new Date(d.date).getTime()),
         datasets: [{
           label: '出来高',
           data: volumes,
@@ -1445,7 +1450,12 @@ async function fetchAndRenderStock(code, range) {
           tooltip: { callbacks: { label: ctx => ` 出来高: ${ctx.parsed.y?.toLocaleString('ja-JP')}株` } },
         },
         scales: {
-          x: { ticks: { ...tickStyle, maxTicksLimit: 8 }, grid: { color: gridColor } },
+          x: {
+  type: 'time',
+  time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
+  ticks: { ...tickStyle, maxTicksLimit: 8 },
+  grid: { color: gridColor },
+},
           y: { ticks: { ...tickStyle, callback: v => (v/1000000).toFixed(1)+'M' }, grid: { color: gridColor } },
         }
       }
