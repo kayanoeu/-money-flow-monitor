@@ -1482,113 +1482,182 @@ function calcRSI(data, period = 14) {
 // 証券コードから業種を推定
 function guessSector(code) {
   const n = parseInt(code);
-  if (n >= 1300 && n < 1500) return '水産・農業';
-  if (n >= 1500 && n < 1700) return '鉱業';
-  if (n >= 1700 && n < 2000) return '建設';
-  if (n >= 2000 && n < 2800) return '食品';
-  if (n >= 2800 && n < 3000) return '水産・食品';
-  if (n >= 3000 && n < 3700) return '繊維・紙';
-  if (n >= 3700 && n < 4000) return '化学・ゴム';
-  if (n >= 4000 && n < 5000) return '化学・医薬品';
-  if (n >= 5000 && n < 5800) return '鉄鋼・非鉄金属';
-  if (n >= 5800 && n < 6000) return '金属製品';
-  if (n >= 6000 && n < 6500) return '機械';
-  if (n >= 6500 && n < 6800) return '電気機器・半導体';
-  if (n >= 6800 && n < 7000) return '電子部品';
-  if (n >= 7000 && n < 7300) return '輸送用機器';
-  if (n >= 7300 && n < 7500) return '自動車・自動車部品';
-  if (n >= 7500 && n < 8000) return '精密機器・その他製造';
-  if (n >= 8000 && n < 8300) return '商社・卸売';
-  if (n >= 8300 && n < 8600) return '銀行・金融';
-  if (n >= 8600 && n < 8800) return '証券・保険';
-  if (n >= 8800 && n < 9000) return '不動産';
-  if (n >= 9000 && n < 9200) return '陸運・海運・空運';
-  if (n >= 9200 && n < 9400) return '倉庫・情報通信';
-  if (n >= 9400 && n < 9600) return '通信・情報サービス';
-  if (n >= 9600 && n < 9800) return '電力・ガス';
-  if (n >= 9800 && n < 9999) return 'サービス業';
-  return '不明';
+  if (n >= 1300 && n < 1500) return { name:'水産・農業',    type:'domestic',  yen:'neutral' };
+  if (n >= 1500 && n < 1700) return { name:'鉱業',          type:'commodity',  yen:'neutral' };
+  if (n >= 1700 && n < 2000) return { name:'建設',          type:'domestic',  yen:'neutral' };
+  if (n >= 2000 && n < 3000) return { name:'食品',          type:'domestic',  yen:'neutral' };
+  if (n >= 3000 && n < 4000) return { name:'繊維・紙',      type:'domestic',  yen:'neutral' };
+  if (n >= 4000 && n < 5000) return { name:'化学・医薬品',  type:'mixed',     yen:'mild_export' };
+  if (n >= 5000 && n < 5800) return { name:'鉄鋼・非鉄',   type:'commodity',  yen:'mild_export' };
+  if (n >= 5800 && n < 6000) return { name:'金属製品',      type:'domestic',  yen:'neutral' };
+  if (n >= 6000 && n < 6500) return { name:'機械',          type:'export',    yen:'export' };
+  if (n >= 6500 && n < 6800) return { name:'電気機器・半導体', type:'export', yen:'export' };
+  if (n >= 6800 && n < 7000) return { name:'電子部品',      type:'export',    yen:'export' };
+  if (n >= 7000 && n < 7500) return { name:'自動車',        type:'export',    yen:'export' };
+  if (n >= 7500 && n < 8000) return { name:'精密機器',      type:'export',    yen:'export' };
+  if (n >= 8000 && n < 8300) return { name:'商社・卸売',    type:'mixed',     yen:'mild_export' };
+  if (n >= 8300 && n < 8600) return { name:'銀行・金融',    type:'financial', yen:'neutral' };
+  if (n >= 8600 && n < 8800) return { name:'証券・保険',    type:'financial', yen:'neutral' };
+  if (n >= 8800 && n < 9000) return { name:'不動産',        type:'domestic',  yen:'neutral' };
+  if (n >= 9000 && n < 9400) return { name:'運輸・倉庫',    type:'domestic',  yen:'neutral' };
+  if (n >= 9400 && n < 9600) return { name:'通信・IT',      type:'domestic',  yen:'neutral' };
+  if (n >= 9600 && n < 9800) return { name:'電力・ガス',    type:'defensive', yen:'neutral' };
+  if (n >= 9800 && n < 9999) return { name:'サービス業',    type:'domestic',  yen:'neutral' };
+  return { name:'不明', type:'unknown', yen:'neutral' };
 }
 
-// マッチ度分析
-async function analyzeStockMatch(code, name, price, change, changePct) {
+// ルールベース マッチ度分析
+function analyzeStockMatch(code, name, price, change, changePct) {
   const panel = document.getElementById('stock-match-panel');
   panel.style.display = 'block';
-  document.getElementById('match-label').textContent = '分析中...';
-  document.getElementById('match-label').style.borderColor = 'var(--text-dim)';
-  document.getElementById('match-label').style.color = 'var(--text-dim)';
-  document.getElementById('match-score-num').textContent = '--';
-  document.getElementById('match-summary').textContent = 'Claude が現在のマクロ環境との相性を分析中...';
-  document.getElementById('match-positives').textContent = '';
-  document.getElementById('match-negatives').textContent = '';
-  document.getElementById('match-suggestion').textContent = '';
-  document.getElementById('match-score-fill').style.width = '0%';
 
-  // 現在のレジームスコアを取得
-  const regimeText = document.getElementById('regimeScore').textContent;
-  const regimeTags = document.getElementById('regimeTags').textContent;
-  const l1Text = document.getElementById('l1-score').textContent;
-  const l2Text = document.getElementById('l2-score').textContent;
-  const l3Text = document.getElementById('l3-score').textContent;
-  const l4Text = document.getElementById('l4-score').textContent;
-  const l5Text = document.getElementById('l5-score').textContent;
+  const sector = guessSector(code);
 
-  const macroScores = {
-    regime:     regimeTags,
-    normalized: regimeText,
-    l1: l1Text,
-    l2: l2Text,
-    l3: l3Text,
-    l4: l4Text,
-    l5: l5Text,
-  };
+  // ── 現在のスコアをDOMから取得 ──
+  const regimeRaw  = document.getElementById('regimeScore').textContent; // 例: "+3.2 / 10"
+  const normalizedMatch = regimeRaw.match(/([-+\d.]+)\s*\//);
+  const normalized = normalizedMatch ? parseFloat(normalizedMatch[1]) : 0;
 
-  const stockInfo = {
-    code,
-    name,
-    price:     price?.toLocaleString('ja-JP'),
-    change:    change?.toFixed(0),
-    changePct: changePct?.toFixed(2),
-    sector:    guessSector(code),
-  };
+  const l5Text  = document.getElementById('l5-score').textContent; // 例: "+3 / 10"
+  const l5Match = l5Text.match(/([-+\d.]+)\s*\//);
+  const l5Score = l5Match ? parseFloat(l5Match[1]) : 0;
 
-  try {
-    const res = await fetch('/api/stock-analysis', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stockInfo, macroScores }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
+  const l2Text  = document.getElementById('l2-score').textContent;
+  const l2Match = l2Text.match(/([-+\d.]+)\s*\//);
+  const l2Score = l2Match ? parseFloat(l2Match[1]) : 0;
 
-    // スコアに応じた色
-    const score = data.matchScore ?? 50;
-    const scoreColor = score >= 70 ? 'var(--green)'
-                     : score >= 40 ? 'var(--yellow)'
-                     : 'var(--red)';
+  const l1Text   = document.getElementById('l1-score').textContent; // 例: "拡張中 ×1.2"
+  const isExpanding  = l1Text.includes('拡張');
+  const isContracting = l1Text.includes('収縮');
 
-    document.getElementById('match-score-num').textContent = score;
-    document.getElementById('match-score-fill').style.width  = `${score}%`;
-    document.getElementById('match-score-fill').style.background = scoreColor;
+  // ── USD/JPY の方向をL5から推定 ──
+  // L5スコアが正 → 円安傾向と仮定
+  const isYenWeak = l5Score > 0;
+  const isYenStrong = l5Score < -1;
 
-    const labelEl = document.getElementById('match-label');
-    labelEl.textContent    = data.matchLabel ?? '中立';
-    labelEl.style.color    = scoreColor;
-    labelEl.style.borderColor = scoreColor;
+  // ── レジーム判定 ──
+  const isRiskOn  = normalized >= 3;
+  const isRiskOff = normalized <= -3;
+  const isNeutral = !isRiskOn && !isRiskOff;
 
-    document.getElementById('match-summary').textContent = data.summary ?? '';
-    document.getElementById('match-positives').innerHTML =
-      (data.positives ?? []).map(p => `<div>✅ ${p}</div>`).join('');
-    document.getElementById('match-negatives').innerHTML =
-      (data.negatives ?? []).map(n => `<div>⚠️ ${n}</div>`).join('');
-    document.getElementById('match-suggestion').textContent =
-      `→ ${data.suggestion ?? ''}`;
+  // ── スコア計算（100点満点） ──
+  let score = 50; // ベーススコア
+  const positives = [];
+  const negatives = [];
 
-  } catch(e) {
-    document.getElementById('match-summary').textContent = `分析失敗: ${e.message}`;
-    console.error('analyzeStockMatch error:', e);
+  // 1. レジームとセクタータイプの相性
+  if (isRiskOn) {
+    if (sector.type === 'export') {
+      score += 20;
+      positives.push('リスクオン（Risk-On）環境：輸出・グロース株に有利な相場');
+    } else if (sector.type === 'financial') {
+      score += 15;
+      positives.push('リスクオン環境：金融株は景気拡張期に強い傾向');
+    } else if (sector.type === 'defensive') {
+      score -= 10;
+      negatives.push('リスクオン環境：ディフェンシブ株は相対的に出遅れやすい');
+    } else if (sector.type === 'domestic') {
+      score += 5;
+      positives.push('リスクオン環境：内需株も底上げされやすい');
+    }
+  } else if (isRiskOff) {
+    if (sector.type === 'defensive') {
+      score += 20;
+      positives.push('リスクオフ（Risk-Off）環境：ディフェンシブ株・公益は相対的に強い');
+    } else if (sector.type === 'domestic') {
+      score += 10;
+      positives.push('リスクオフ環境：内需株は外需の影響を受けにくい');
+    } else if (sector.type === 'export') {
+      score -= 20;
+      negatives.push('リスクオフ環境：輸出株・グロースは売られやすい');
+    } else if (sector.type === 'financial') {
+      score -= 15;
+      negatives.push('リスクオフ環境：金融株は景気後退懸念で売られやすい');
+    }
   }
+
+  // 2. 為替（円安/円高）との相性
+  if (isYenWeak && sector.yen === 'export') {
+    score += 15;
+    positives.push('円安傾向：輸出企業の収益にプラス（海外売上が円換算で増加）');
+  } else if (isYenWeak && sector.yen === 'mild_export') {
+    score += 8;
+    positives.push('円安傾向：海外収益比率の高い業種にやや有利');
+  } else if (isYenStrong && sector.yen === 'export') {
+    score -= 15;
+    negatives.push('円高傾向：輸出企業の収益にマイナス（海外売上の円換算が減少）');
+  } else if (isYenStrong && sector.yen === 'mild_export') {
+    score -= 8;
+    negatives.push('円高傾向：海外収益比率の高い業種にやや不利');
+  }
+
+  // 3. 流動性バイアス
+  if (isExpanding) {
+    score += 8;
+    positives.push('流動性拡張中（中銀が資金供給）：株式全般に追い風');
+  } else if (isContracting) {
+    score -= 8;
+    negatives.push('流動性収縮中（中銀が資金回収）：株式全般に逆風');
+  }
+
+  // 4. クレジット環境（L2）
+  if (l2Score > 0) {
+    score += 5;
+    positives.push('クレジット環境良好（スプレッド縮小・VIX低下）：リスク資産に有利');
+  } else if (l2Score < -2) {
+    score -= 8;
+    negatives.push('クレジット環境悪化（スプレッド拡大・VIX上昇）：リスク資産全般に注意');
+  }
+
+  // スコアを0〜100に制限
+  score = Math.max(0, Math.min(100, score));
+
+  // ── ラベル判定 ──
+  let matchLabel, labelColor;
+  if (score >= 75)      { matchLabel = '非常に良好'; labelColor = 'var(--green)'; }
+  else if (score >= 60) { matchLabel = '良好';       labelColor = 'var(--green)'; }
+  else if (score >= 45) { matchLabel = '中立';       labelColor = 'var(--yellow)'; }
+  else if (score >= 30) { matchLabel = '要注意';     labelColor = 'var(--red)'; }
+  else                  { matchLabel = '不向き';     labelColor = 'var(--red)'; }
+
+  // ── 戦略示唆 ──
+  let suggestion;
+  if (score >= 70) {
+    suggestion = `現在のマクロ環境は${sector.name}セクターに追い風。エントリーを前向きに検討できる局面。`;
+  } else if (score >= 50) {
+    suggestion = `マクロ環境は概ね中立。個別の決算・業績動向を重視した判断を推奨。`;
+  } else if (score >= 30) {
+    suggestion = `現在のマクロ環境は${sector.name}セクターにやや逆風。ポジションサイズを小さめに。`;
+  } else {
+    suggestion = `現在のマクロ環境は${sector.name}セクターに不利。環境改善を待つか回避を検討。`;
+  }
+
+  // ── UIに反映 ──
+  document.getElementById('match-score-num').textContent = score;
+  document.getElementById('match-score-fill').style.width = `${score}%`;
+  document.getElementById('match-score-fill').style.background = labelColor;
+
+  const labelEl = document.getElementById('match-label');
+  labelEl.textContent      = matchLabel;
+  labelEl.style.color      = labelColor;
+  labelEl.style.borderColor = labelColor;
+
+  // サマリー
+  const regimeLabel = document.getElementById('regimeTags').textContent.trim();
+  document.getElementById('match-summary').textContent =
+    `${sector.name}セクター × ${regimeLabel} → マッチ度 ${score}点`;
+
+  document.getElementById('match-positives').innerHTML =
+    positives.length > 0
+      ? positives.map(p => `<div>✅ ${p}</div>`).join('')
+      : '<div style="color:var(--text-dim)">特になし</div>';
+
+  document.getElementById('match-negatives').innerHTML =
+    negatives.length > 0
+      ? negatives.map(n => `<div>⚠️ ${n}</div>`).join('')
+      : '<div style="color:var(--text-dim)">特になし</div>';
+
+  document.getElementById('match-suggestion').textContent = `→ ${suggestion}`;
 }
   
   // ─────────────────────────────────────────────
