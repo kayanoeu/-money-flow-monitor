@@ -1324,40 +1324,43 @@ async function fetchAndRenderStock(code, range) {
     // メインチャート（価格 + MA）
     if (stockChartMain) stockChartMain.destroy();
     stockChartMain = new Chart(document.getElementById('stockMainChart'), {
-      type: 'line',
+      type: 'candlestick',
       data: {
-        labels,
         datasets: [
           {
-            label: '終値',
-            data: closes,
-            borderColor: color,
-            borderWidth: 2,
-            pointRadius: 0,
-            fill: true,
-            backgroundColor: isUp ? 'rgba(0,230,118,0.06)' : 'rgba(255,68,68,0.06)',
-            tension: 0.2,
-            yAxisID: 'y',
+            label: '株価',
+            data: data.map(d => ({
+              x: new Date(d.date).getTime(),
+              o: d.open,
+              h: d.high,
+              l: d.low,
+              c: d.close,
+            })),
+            color: {
+              up:   '#00e676',
+              down: '#ff4444',
+              unchanged: '#5a7080',
+            },
           },
           {
             label: 'MA5',
-            data: ma5,
+            type: 'line',
+            data: data.map((d, i) => ({ x: new Date(d.date).getTime(), y: ma5[i] })),
             borderColor: '#ffd740',
             borderWidth: 1.5,
             pointRadius: 0,
             fill: false,
             tension: 0.2,
-            yAxisID: 'y',
           },
           {
             label: 'MA25',
-            data: ma25,
+            type: 'line',
+            data: data.map((d, i) => ({ x: new Date(d.date).getTime(), y: ma25[i] })),
             borderColor: '#00d4ff',
             borderWidth: 1.5,
             pointRadius: 0,
             fill: false,
             tension: 0.2,
-            yAxisID: 'y',
           },
         ]
       },
@@ -1369,15 +1372,18 @@ async function fetchAndRenderStock(code, range) {
             display: true,
             labels: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, boxWidth: 20 }
           },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString('ja-JP')}円`
-            }
-          }
         },
         scales: {
-          x: { ticks: { ...tickStyle, maxTicksLimit: 8 }, grid: { color: gridColor } },
-          y: { ticks: { ...tickStyle, callback: v => v.toLocaleString('ja-JP') }, grid: { color: gridColor } },
+          x: {
+            type: 'time',
+            time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
+            ticks: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 8 },
+            grid: { color: gridColor },
+          },
+          y: {
+            ticks: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, callback: v => v.toLocaleString('ja-JP') },
+            grid: { color: gridColor },
+          },
         }
       }
     });
