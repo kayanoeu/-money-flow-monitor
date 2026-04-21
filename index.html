@@ -248,6 +248,78 @@
 }
 .metric-row { cursor: pointer; }
 .metric-row:hover .metric-name { color: var(--accent); }
+  /* ── 株チャートパネル ── */
+.stock-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+.stock-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.stock-input {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text-bright);
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  padding: 8px 12px;
+  width: 120px;
+  outline: none;
+  letter-spacing: 0.1em;
+}
+.stock-input:focus { border-color: var(--accent); }
+.stock-btn {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 8px 16px;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  transition: all 0.2s;
+}
+.stock-btn:hover { background: var(--accent); color: var(--bg); }
+.stock-range-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.stock-range-btn.active,
+.stock-range-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.stock-info {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  padding: 6px 0;
+}
+.stock-name {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--text-bright);
+  margin-right: 12px;
+}
+.stock-price {
+  font-family: 'Space Mono', monospace;
+  font-size: 18px;
+  color: var(--text-bright);
+}
+.stock-change-pos { color: var(--green); font-family: 'DM Mono', monospace; font-size: 12px; }
+.stock-change-neg { color: var(--red);   font-family: 'DM Mono', monospace; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -439,6 +511,45 @@
     <span style="color:var(--text-dim);font-family:'DM Mono',monospace;font-size:11px;">
       更新ボタンを押すと市場分析コメントが生成されます...
     </span>
+  </div>
+</div>
+  <!-- 日本株チャート -->
+<div class="stock-panel">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+    <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--accent);">📈 日本株チャート</span>
+    <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-dim);padding:2px 8px;border:1px solid var(--border2);">4桁コード入力</span>
+  </div>
+
+  <div class="stock-input-row">
+    <input
+      type="text"
+      id="stockCode"
+      class="stock-input"
+      placeholder="7203"
+      maxlength="4"
+      onkeydown="if(event.key==='Enter') loadStock()"
+    >
+    <button class="stock-btn" onclick="loadStock()">チャート表示</button>
+    <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);">例: 7203=トヨタ / 6758=ソニー / 8306=三菱UFJ</span>
+  </div>
+
+  <div id="stock-range-row" style="display:none;gap:6px;margin-bottom:14px;display:none;">
+    <button class="stock-range-btn active" onclick="changeRange('1mo',this)">1ヶ月</button>
+    <button class="stock-range-btn" onclick="changeRange('3mo',this)">3ヶ月</button>
+    <button class="stock-range-btn" onclick="changeRange('6mo',this)">6ヶ月</button>
+    <button class="stock-range-btn" onclick="changeRange('1y',this)">1年</button>
+  </div>
+
+  <div id="stock-info" style="display:none;margin-bottom:12px;">
+    <span class="stock-name" id="stock-name">--</span>
+    <span class="stock-price" id="stock-price">--</span>
+    <span id="stock-change" class="stock-change-pos">--</span>
+  </div>
+
+  <div id="stock-chart-area">
+    <div style="text-align:center;padding:40px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-dim);">
+      銘柄コードを入力してください
+    </div>
   </div>
 </div>
   <div class="japan-panel">
@@ -1080,6 +1191,234 @@ function loadManualInputs() {
 
 // ページ読み込み時に保存済みデータを復元
 loadManualInputs();
+  // ─────────────────────────────────────────────
+// 日本株チャート
+// ─────────────────────────────────────────────
+
+let stockChartMain = null;
+let stockChartVolume = null;
+let stockChartRsi = null;
+let currentStockCode = null;
+let currentStockRange = '3mo';
+
+async function loadStock() {
+  const code = document.getElementById('stockCode').value.trim();
+  if (!code || code.length !== 4) {
+    alert('4桁の証券コードを入力してください');
+    return;
+  }
+  currentStockCode = code;
+  await fetchAndRenderStock(code, currentStockRange);
+}
+
+async function changeRange(range, btn) {
+  currentStockRange = range;
+  document.querySelectorAll('.stock-range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (currentStockCode) await fetchAndRenderStock(currentStockCode, range);
+}
+
+async function fetchAndRenderStock(code, range) {
+  const area = document.getElementById('stock-chart-area');
+  area.innerHTML = `<div style="text-align:center;padding:40px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-dim);animation:blink 1.5s infinite;">データ取得中...</div>`;
+
+  try {
+    const res = await fetch(`/api/stock?code=${code}&range=${range}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+
+    const data = json.data;
+    const labels = data.map(d => d.date);
+    const closes = data.map(d => d.close);
+    const volumes = data.map(d => d.volume);
+
+    // MA計算
+    const ma5  = calcMA(closes, 5);
+    const ma25 = calcMA(closes, 25);
+
+    // RSI計算
+    const rsi14 = calcRSI(closes, 14);
+
+    // 値段情報更新
+    const last  = closes[closes.length - 1];
+    const prev  = closes[closes.length - 2];
+    const chg   = last - prev;
+    const chgPct = (chg / prev) * 100;
+    const isUp  = chg >= 0;
+
+    document.getElementById('stock-name').textContent  = `${json.name}（${code}）`;
+    document.getElementById('stock-price').textContent = last?.toLocaleString('ja-JP') + ' 円';
+    const chgEl = document.getElementById('stock-change');
+    chgEl.textContent   = `${isUp ? '+' : ''}${chg.toFixed(0)}円 (${isUp ? '+' : ''}${chgPct.toFixed(2)}%)`;
+    chgEl.className     = isUp ? 'stock-change-pos' : 'stock-change-neg';
+    document.getElementById('stock-info').style.display = 'block';
+    document.getElementById('stock-range-row').style.display = 'flex';
+
+    // チャートエリア構築
+    area.innerHTML = `
+      <canvas id="stockMainChart" height="180"></canvas>
+      <canvas id="stockRsiChart"  height="70"  style="margin-top:8px;"></canvas>
+      <canvas id="stockVolChart"  height="60"  style="margin-top:4px;"></canvas>
+    `;
+
+    const color = isUp ? '#00e676' : '#ff4444';
+    const gridColor = 'rgba(30,42,53,0.8)';
+    const tickStyle = { color: '#5a7080', font: { family: 'DM Mono', size: 10 } };
+
+    // メインチャート（価格 + MA）
+    if (stockChartMain) stockChartMain.destroy();
+    stockChartMain = new Chart(document.getElementById('stockMainChart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '終値',
+            data: closes,
+            borderColor: color,
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: true,
+            backgroundColor: isUp ? 'rgba(0,230,118,0.06)' : 'rgba(255,68,68,0.06)',
+            tension: 0.2,
+            yAxisID: 'y',
+          },
+          {
+            label: 'MA5',
+            data: ma5,
+            borderColor: '#ffd740',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.2,
+            yAxisID: 'y',
+          },
+          {
+            label: 'MA25',
+            data: ma25,
+            borderColor: '#00d4ff',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.2,
+            yAxisID: 'y',
+          },
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            display: true,
+            labels: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, boxWidth: 20 }
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString('ja-JP')}円`
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { ...tickStyle, maxTicksLimit: 8 }, grid: { color: gridColor } },
+          y: { ticks: { ...tickStyle, callback: v => v.toLocaleString('ja-JP') }, grid: { color: gridColor } },
+        }
+      }
+    });
+
+    // RSIチャート
+    if (stockChartRsi) stockChartRsi.destroy();
+    stockChartRsi = new Chart(document.getElementById('stockRsiChart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'RSI(14)',
+          data: rsi14,
+          borderColor: '#bb86fc',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.2,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: true, labels: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, boxWidth: 20 } },
+          tooltip: { callbacks: { label: ctx => ` RSI: ${ctx.parsed.y?.toFixed(1)}` } },
+          annotation: {},
+        },
+        scales: {
+          x: { ticks: { ...tickStyle, maxTicksLimit: 8 }, grid: { color: gridColor } },
+          y: {
+            min: 0, max: 100,
+            ticks: { ...tickStyle, stepSize: 25 },
+            grid: { color: gridColor },
+          }
+        }
+      }
+    });
+
+    // 出来高チャート
+    if (stockChartVolume) stockChartVolume.destroy();
+    stockChartVolume = new Chart(document.getElementById('stockVolChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: '出来高',
+          data: volumes,
+          backgroundColor: closes.map((c, i) =>
+            i === 0 ? 'rgba(0,212,255,0.4)' :
+            c >= closes[i-1] ? 'rgba(0,230,118,0.4)' : 'rgba(255,68,68,0.4)'
+          ),
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: true, labels: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, boxWidth: 20 } },
+          tooltip: { callbacks: { label: ctx => ` 出来高: ${ctx.parsed.y?.toLocaleString('ja-JP')}株` } },
+        },
+        scales: {
+          x: { ticks: { ...tickStyle, maxTicksLimit: 8 }, grid: { color: gridColor } },
+          y: { ticks: { ...tickStyle, callback: v => (v/1000000).toFixed(1)+'M' }, grid: { color: gridColor } },
+        }
+      }
+    });
+
+  } catch(e) {
+    area.innerHTML = `<div style="text-align:center;padding:40px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);">取得失敗: ${e.message}</div>`;
+  }
+}
+
+// MA計算
+function calcMA(data, period) {
+  return data.map((_, i) => {
+    if (i < period - 1) return null;
+    const slice = data.slice(i - period + 1, i + 1).filter(v => v != null);
+    return slice.length === period ? slice.reduce((a, b) => a + b, 0) / period : null;
+  });
+}
+
+// RSI計算
+function calcRSI(data, period = 14) {
+  const rsi = new Array(data.length).fill(null);
+  for (let i = period; i < data.length; i++) {
+    let gains = 0, losses = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      const diff = data[j] - data[j-1];
+      if (diff > 0) gains += diff;
+      else losses -= diff;
+    }
+    const avgGain = gains / period;
+    const avgLoss = losses / period;
+    rsi[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+  }
+  return rsi;
+}
 
   // ─────────────────────────────────────────────
 // Claude AI コメント生成
