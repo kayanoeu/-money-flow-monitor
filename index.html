@@ -255,6 +255,38 @@
   padding: 20px 24px;
   margin-bottom: 16px;
 }
+  .match-panel {
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+}
+.match-score-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 0;
+  margin: 8px 0;
+  position: relative;
+}
+.match-score-fill {
+  height: 100%;
+  position: absolute;
+  top: 0; left: 0;
+  transition: width 0.8s ease;
+}
+.match-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  padding: 3px 8px;
+  border: 1px solid;
+  letter-spacing: 0.05em;
+}
+.match-list {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--text);
+}
 .stock-input-row {
   display: flex;
   gap: 10px;
@@ -551,6 +583,30 @@
       銘柄コードを入力してください
     </div>
   </div>
+  <div id="stock-match-panel" style="display:none;" class="match-panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+    <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.08em;">✦ マクロ環境マッチ度（Claude分析）</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span id="match-score-num" style="font-family:'Space Mono',monospace;font-size:18px;color:var(--text-bright);">--</span>
+      <span id="match-label" class="match-tag">分析中</span>
+    </div>
+  </div>
+  <div class="match-score-bar">
+    <div class="match-score-fill" id="match-score-fill"></div>
+  </div>
+  <div id="match-summary" style="font-family:'Noto Sans JP',sans-serif;font-size:12px;color:var(--text);margin:10px 0;line-height:1.7;"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--green);letter-spacing:0.08em;margin-bottom:4px;">▲ ポジティブ要因</div>
+      <div id="match-positives" class="match-list"></div>
+    </div>
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--red);letter-spacing:0.08em;margin-bottom:4px;">▼ リスク要因</div>
+      <div id="match-negatives" class="match-list"></div>
+    </div>
+  </div>
+  <div id="match-suggestion" style="margin-top:10px;padding:8px 12px;border-left:2px solid var(--accent);font-family:'Noto Sans JP',sans-serif;font-size:11px;color:var(--text-dim);line-height:1.7;"></div>
+</div>
 </div>
   <div class="japan-panel">
     <div class="japan-header">
@@ -1389,6 +1445,9 @@ async function fetchAndRenderStock(code, range) {
       }
     });
 
+// マッチ度分析を非同期で実行
+    analyzeStockMatch(code, json.name, last, chg, chgPct);
+    
   } catch(e) {
     area.innerHTML = `<div style="text-align:center;padding:40px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);">取得失敗: ${e.message}</div>`;
   }
@@ -1420,6 +1479,118 @@ function calcRSI(data, period = 14) {
   return rsi;
 }
 
+// 証券コードから業種を推定
+function guessSector(code) {
+  const n = parseInt(code);
+  if (n >= 1300 && n < 1500) return '水産・農業';
+  if (n >= 1500 && n < 1700) return '鉱業';
+  if (n >= 1700 && n < 2000) return '建設';
+  if (n >= 2000 && n < 2800) return '食品';
+  if (n >= 2800 && n < 3000) return '水産・食品';
+  if (n >= 3000 && n < 3700) return '繊維・紙';
+  if (n >= 3700 && n < 4000) return '化学・ゴム';
+  if (n >= 4000 && n < 5000) return '化学・医薬品';
+  if (n >= 5000 && n < 5800) return '鉄鋼・非鉄金属';
+  if (n >= 5800 && n < 6000) return '金属製品';
+  if (n >= 6000 && n < 6500) return '機械';
+  if (n >= 6500 && n < 6800) return '電気機器・半導体';
+  if (n >= 6800 && n < 7000) return '電子部品';
+  if (n >= 7000 && n < 7300) return '輸送用機器';
+  if (n >= 7300 && n < 7500) return '自動車・自動車部品';
+  if (n >= 7500 && n < 8000) return '精密機器・その他製造';
+  if (n >= 8000 && n < 8300) return '商社・卸売';
+  if (n >= 8300 && n < 8600) return '銀行・金融';
+  if (n >= 8600 && n < 8800) return '証券・保険';
+  if (n >= 8800 && n < 9000) return '不動産';
+  if (n >= 9000 && n < 9200) return '陸運・海運・空運';
+  if (n >= 9200 && n < 9400) return '倉庫・情報通信';
+  if (n >= 9400 && n < 9600) return '通信・情報サービス';
+  if (n >= 9600 && n < 9800) return '電力・ガス';
+  if (n >= 9800 && n < 9999) return 'サービス業';
+  return '不明';
+}
+
+// マッチ度分析
+async function analyzeStockMatch(code, name, price, change, changePct) {
+  const panel = document.getElementById('stock-match-panel');
+  panel.style.display = 'block';
+  document.getElementById('match-label').textContent = '分析中...';
+  document.getElementById('match-label').style.borderColor = 'var(--text-dim)';
+  document.getElementById('match-label').style.color = 'var(--text-dim)';
+  document.getElementById('match-score-num').textContent = '--';
+  document.getElementById('match-summary').textContent = 'Claude が現在のマクロ環境との相性を分析中...';
+  document.getElementById('match-positives').textContent = '';
+  document.getElementById('match-negatives').textContent = '';
+  document.getElementById('match-suggestion').textContent = '';
+  document.getElementById('match-score-fill').style.width = '0%';
+
+  // 現在のレジームスコアを取得
+  const regimeText = document.getElementById('regimeScore').textContent;
+  const regimeTags = document.getElementById('regimeTags').textContent;
+  const l1Text = document.getElementById('l1-score').textContent;
+  const l2Text = document.getElementById('l2-score').textContent;
+  const l3Text = document.getElementById('l3-score').textContent;
+  const l4Text = document.getElementById('l4-score').textContent;
+  const l5Text = document.getElementById('l5-score').textContent;
+
+  const macroScores = {
+    regime:     regimeTags,
+    normalized: regimeText,
+    l1: l1Text,
+    l2: l2Text,
+    l3: l3Text,
+    l4: l4Text,
+    l5: l5Text,
+  };
+
+  const stockInfo = {
+    code,
+    name,
+    price:     price?.toLocaleString('ja-JP'),
+    change:    change?.toFixed(0),
+    changePct: changePct?.toFixed(2),
+    sector:    guessSector(code),
+  };
+
+  try {
+    const res = await fetch('/api/stock-analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stockInfo, macroScores }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // スコアに応じた色
+    const score = data.matchScore ?? 50;
+    const scoreColor = score >= 70 ? 'var(--green)'
+                     : score >= 40 ? 'var(--yellow)'
+                     : 'var(--red)';
+
+    document.getElementById('match-score-num').textContent = score;
+    document.getElementById('match-score-fill').style.width  = `${score}%`;
+    document.getElementById('match-score-fill').style.background = scoreColor;
+
+    const labelEl = document.getElementById('match-label');
+    labelEl.textContent    = data.matchLabel ?? '中立';
+    labelEl.style.color    = scoreColor;
+    labelEl.style.borderColor = scoreColor;
+
+    document.getElementById('match-summary').textContent = data.summary ?? '';
+    document.getElementById('match-positives').innerHTML =
+      (data.positives ?? []).map(p => `<div>✅ ${p}</div>`).join('');
+    document.getElementById('match-negatives').innerHTML =
+      (data.negatives ?? []).map(n => `<div>⚠️ ${n}</div>`).join('');
+    document.getElementById('match-suggestion').textContent =
+      `→ ${data.suggestion ?? ''}`;
+
+  } catch(e) {
+    document.getElementById('match-summary').textContent = `分析失敗: ${e.message}`;
+    console.error('analyzeStockMatch error:', e);
+  }
+}
+  
   // ─────────────────────────────────────────────
 // Claude AI コメント生成
 // ─────────────────────────────────────────────
@@ -1485,7 +1656,7 @@ async function generateComment(l1Result, layers, allMetrics) {
 </script>
   <!-- Chart.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
 <!-- チャートモーダル -->
 <div class="chart-modal-overlay" id="chartOverlay" onclick="closeChart(event)">
   <div class="chart-modal">
