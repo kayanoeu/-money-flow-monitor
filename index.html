@@ -1393,7 +1393,7 @@ async function fetchAndRenderStock(code, range) {
     stockChartRsi = new Chart(document.getElementById('stockRsiChart'), {
       type: 'line',
       data: {
-        data.map(d => new Date(d.date).getTime()),
+        labels: data.map(d => new Date(d.date).getTime()),
         datasets: [{
           label: 'RSI(14)',
           data: rsi14,
