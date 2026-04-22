@@ -1498,28 +1498,16 @@ function calcRSI(data, period = 14) {
 // 証券コードから業種を推定
 function guessSector(code) {
   const n = parseInt(code);
-  if (n >= 1300 && n < 1500) return { name:'水産・農業',    type:'domestic',  yen:'neutral' };
-  if (n >= 1500 && n < 1700) return { name:'鉱業',          type:'commodity',  yen:'neutral' };
-  if (n >= 1700 && n < 2000) return { name:'建設',          type:'domestic',  yen:'neutral' };
-  if (n >= 2000 && n < 3000) return { name:'食品',          type:'domestic',  yen:'neutral' };
-  if (n >= 3000 && n < 4000) return { name:'繊維・紙',      type:'domestic',  yen:'neutral' };
-  if (n >= 4000 && n < 5000) return { name:'化学・医薬品',  type:'mixed',     yen:'mild_export' };
-  if (n >= 5000 && n < 5800) return { name:'鉄鋼・非鉄',   type:'commodity',  yen:'mild_export' };
-  if (n >= 5800 && n < 6000) return { name:'金属製品',      type:'domestic',  yen:'neutral' };
   if (n >= 6000 && n < 6500) return { name:'機械',          type:'export',    yen:'export' };
-  if (n >= 6500 && n < 6800) return { name:'電気機器・半導体', type:'export', yen:'export' };
-  if (n >= 6800 && n < 7000) return { name:'電子部品',      type:'export',    yen:'export' };
-  if (n >= 7000 && n < 7500) return { name:'自動車',        type:'export',    yen:'export' };
-  if (n >= 7500 && n < 8000) return { name:'精密機器',      type:'export',    yen:'export' };
-  if (n >= 8000 && n < 8300) return { name:'商社・卸売',    type:'mixed',     yen:'mild_export' };
-  if (n >= 8300 && n < 8600) return { name:'銀行・金融',    type:'financial', yen:'neutral' };
-  if (n >= 8600 && n < 8800) return { name:'証券・保険',    type:'financial', yen:'neutral' };
-  if (n >= 8800 && n < 9000) return { name:'不動産',        type:'domestic',  yen:'neutral' };
-  if (n >= 9000 && n < 9400) return { name:'運輸・倉庫',    type:'domestic',  yen:'neutral' };
-  if (n >= 9400 && n < 9600) return { name:'通信・IT',      type:'domestic',  yen:'neutral' };
-  if (n >= 9600 && n < 9800) return { name:'電力・ガス',    type:'defensive', yen:'neutral' };
-  if (n >= 9800 && n < 9999) return { name:'サービス業',    type:'domestic',  yen:'neutral' };
-  return { name:'不明', type:'unknown', yen:'neutral' };
+  if (n >= 6500 && n < 7000) return { name:'電気機器・半導体', type:'export',  yen:'export' };
+  if (n >= 7000 && n < 7500) return { name:'自動車',         type:'export',   yen:'export' };
+  if (n >= 7500 && n < 8000) return { name:'精密機器',       type:'export',   yen:'export' };
+  if (n >= 8300 && n < 8600) return { name:'銀行・金融',     type:'financial', yen:'neutral' };
+  if (n >= 8600 && n < 8800) return { name:'証券・保険',     type:'financial', yen:'neutral' };
+  if (n >= 9600 && n < 9800) return { name:'電力・ガス',     type:'defensive', yen:'neutral' };
+  if (n >= 8000 && n < 8300) return { name:'商社・卸売',     type:'mixed',    yen:'mild_export' };
+  if (n >= 4000 && n < 5000) return { name:'化学・医薬品',   type:'mixed',    yen:'mild_export' };
+  return { name:'内需・その他', type:'domestic', yen:'neutral' };
 }
 
 // ルールベース マッチ度分析
