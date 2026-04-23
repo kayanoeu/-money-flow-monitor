@@ -1298,7 +1298,12 @@ async function fetchAndRenderStock(code, range) {
     // MA計算
     const ma5  = calcMA(closes, 5);
     const ma25 = calcMA(closes, 25);
-
+    // MA5
+    data: data.map((d, i) => ({ x: i, y: ma5[i] })),
+    
+    // MA25
+    data: data.map((d, i) => ({ x: i, y: ma25[i] })),
+      
     // RSI計算
     const rsi14 = calcRSI(closes, 14);
 
@@ -1336,12 +1341,9 @@ async function fetchAndRenderStock(code, range) {
         datasets: [
           {
             label: '株価',
-            data: data.map(d => ({
-              x: new Date(d.date).getTime(),
-              o: d.open,
-              h: d.high,
-              l: d.low,
-              c: d.close,
+             data: data.map((d, i) => ({
+              x: i,
+              o: d.open, h: d.high, l: d.low, c: d.close,
             })),
             color: {
               up:   '#00e676',
@@ -1381,10 +1383,8 @@ async function fetchAndRenderStock(code, range) {
           },
         },
         scales: {
-          x: {
-            type: 'time',
-            time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
-            ticks: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 8 },
+         x: {
+            ticks: { ...tickStyle, maxTicksLimit: 6 },
             grid: { color: gridColor },
           },
           y: {
@@ -1400,7 +1400,7 @@ async function fetchAndRenderStock(code, range) {
     stockChartRsi = new Chart(document.getElementById('stockRsiChart'), {
       type: 'line',
       data: {
-        labels: data.map(d => new Date(d.date).getTime()),
+        labels: data.map(d => d.date.slice(5)),
         datasets: [{
           label: 'RSI(14)',
           data: rsi14,
@@ -1420,11 +1420,9 @@ async function fetchAndRenderStock(code, range) {
         },
         scales: {
          x: {
-  type: 'time',
-  time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
-  ticks: { ...tickStyle, maxTicksLimit: 8 },
-  grid: { color: gridColor },
-},
+          ticks: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 8 },
+          grid: { color: gridColor },
+        },
           y: {
             min: 0, max: 100,
             ticks: { ...tickStyle, stepSize: 25 },
@@ -1439,7 +1437,7 @@ async function fetchAndRenderStock(code, range) {
     stockChartVolume = new Chart(document.getElementById('stockVolChart'), {
       type: 'bar',
       data: {
-        labels: data.map(d => new Date(d.date).getTime()),
+        labels: data.map(d => d.date.slice(5)),
         datasets: [{
           label: '出来高',
           data: volumes,
@@ -1458,11 +1456,9 @@ async function fetchAndRenderStock(code, range) {
         },
         scales: {
           x: {
-            type: 'time',
-            time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
-            ticks: { ...tickStyle, maxTicksLimit: 8 },
-            grid: { color: gridColor },
-          },
+          ticks: { ...tickStyle, maxTicksLimit: 6 },
+          grid: { color: gridColor },
+        },
           y: { ticks: { ...tickStyle, callback: v => (v/1000000).toFixed(1)+'M' }, grid: { color: gridColor } },
         }
       }
