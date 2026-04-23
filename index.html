@@ -354,12 +354,7 @@
 .stock-change-neg { color: var(--red);   font-family: 'DM Mono', monospace; font-size: 12px; }
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1/dist/chartjs-adapter-luxon.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1/dist/chartjs-adapter-luxon.umd.min.js"></script>
-</head>
+ </head>
 
 <body>
 
@@ -1335,72 +1330,96 @@ async function fetchAndRenderStock(code, range) {
 
     // メインチャート（価格 + MA）
     if (stockChartMain) stockChartMain.destroy();
-    stockChartMain = new Chart(document.getElementById('stockMainChart'), {
-      type: 'candlestick',
-      data: {
-        datasets: [
-          {
-            label: '株価',
-             data: data.map((d, i) => ({
-              x: i,
-              o: d.open, h: d.high, l: d.low, c: d.close,
-            })),
-            color: {
-              up:   '#00e676',
-              down: '#ff4444',
-              unchanged: '#5a7080',
-            },
-          },
-          {
-            label: 'MA5',
-            type: 'line',
-            data: data.map((d, i) => ({ x: new Date(d.date).getTime(), y: ma5[i] })),
-            borderColor: '#ffd740',
-            borderWidth: 1.5,
-            pointRadius: 0,
-            fill: false,
-            tension: 0.2,
-          },
-          {
-            label: 'MA25',
-            type: 'line',
-            data: data.map((d, i) => ({ x: new Date(d.date).getTime(), y: ma25[i] })),
-            borderColor: '#00d4ff',
-            borderWidth: 1.5,
-            pointRadius: 0,
-            fill: false,
-            tension: 0.2,
-          },
-        ]
+const highs  = data.map(d => d.high);
+const lows   = data.map(d => d.low);
+const xLabels = data.map(d => d.date.slice(5));
+
+stockChartMain = new Chart(document.getElementById('stockMainChart'), {
+  type: 'line',
+  data: {
+    labels: xLabels,
+    datasets: [
+      {
+        label: '高値',
+        data: highs,
+        borderColor: 'rgba(0,230,118,0.3)',
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: '+1',
+        backgroundColor: isUp ? 'rgba(0,230,118,0.08)' : 'rgba(255,68,68,0.08)',
+        tension: 0.1,
       },
-      options: {
-        responsive: true,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: {
-            display: true,
-            labels: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, boxWidth: 20 }
-          },
-        },
-        scales: {
-         x: {
-            ticks: { ...tickStyle, maxTicksLimit: 6 },
-            grid: { color: gridColor },
-          },
-          y: {
-            ticks: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, callback: v => v.toLocaleString('ja-JP') },
-            grid: { color: gridColor },
-          },
+      {
+        label: '安値',
+        data: lows,
+        borderColor: 'rgba(255,68,68,0.3)',
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.1,
+      },
+      {
+        label: '終値',
+        data: closes,
+        borderColor: color,
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.2,
+      },
+      {
+        label: 'MA5',
+        data: ma5,
+        borderColor: '#ffd740',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.2,
+      },
+      {
+        label: 'MA25',
+        data: ma25,
+        borderColor: '#00d4ff',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.2,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        display: true,
+        labels: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, boxWidth: 20 }
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString('ja-JP')}円`
         }
       }
-    });
+    },
+    scales: {
+      x: {
+        ticks: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 8 },
+        grid: { color: gridColor },
+      },
+      y: {
+        ticks: { color: '#5a7080', font: { family: 'DM Mono', size: 10 }, callback: v => v.toLocaleString('ja-JP') },
+        grid: { color: gridColor },
+      },
+    }
+  }
+});
 
     // RSIチャート
     if (stockChartRsi) stockChartRsi.destroy();
     stockChartRsi = new Chart(document.getElementById('stockRsiChart'), {
       type: 'line',
       data: {
-        labels: data.map(d => d.date.slice(5)),
+        labels: xLabels,
         datasets: [{
           label: 'RSI(14)',
           data: rsi14,
@@ -1437,7 +1456,7 @@ async function fetchAndRenderStock(code, range) {
     stockChartVolume = new Chart(document.getElementById('stockVolChart'), {
       type: 'bar',
       data: {
-        labels: data.map(d => d.date.slice(5)),
+        labels: xLabels,
         datasets: [{
           label: '出来高',
           data: volumes,
