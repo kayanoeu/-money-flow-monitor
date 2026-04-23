@@ -1436,7 +1436,7 @@ async function fetchAndRenderStock(code, range) {
     stockChartVolume = new Chart(document.getElementById('stockVolChart'), {
       type: 'bar',
       data: {
-        data.map(d => new Date(d.date).getTime()),
+        labels: data.map(d => new Date(d.date).getTime()),
         datasets: [{
           label: '出来高',
           data: volumes,
@@ -1455,15 +1455,16 @@ async function fetchAndRenderStock(code, range) {
         },
         scales: {
           x: {
-  type: 'time',
-  time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
-  ticks: { ...tickStyle, maxTicksLimit: 8 },
-  grid: { color: gridColor },
-},
+            type: 'time',
+            time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
+            ticks: { ...tickStyle, maxTicksLimit: 8 },
+            grid: { color: gridColor },
+          },
           y: { ticks: { ...tickStyle, callback: v => (v/1000000).toFixed(1)+'M' }, grid: { color: gridColor } },
         }
       }
     });
+
 
 // マッチ度分析を非同期で実行
     analyzeStockMatch(code, json.name, last, chg, chgPct);
