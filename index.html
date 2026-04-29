@@ -1293,11 +1293,7 @@ async function fetchAndRenderStock(code, range) {
     // MA計算
     const ma5  = calcMA(closes, 5);
     const ma25 = calcMA(closes, 25);
-    // MA5
-    data: data.map((d, i) => ({ x: i, y: ma5[i] })),
-    
-    // MA25
-    data: data.map((d, i) => ({ x: i, y: ma25[i] })),
+  
       
     // RSI計算
     const rsi14 = calcRSI(closes, 14);
@@ -1330,9 +1326,9 @@ async function fetchAndRenderStock(code, range) {
 
     // メインチャート（価格 + MA）
     if (stockChartMain) stockChartMain.destroy();
-const highs  = data.map(d => d.high);
-const lows   = data.map(d => d.low);
-const xLabels = data.map(d => d.date.slice(5));
+      const highs  = data.map(d => d.high);
+      const lows   = data.map(d => d.low);
+      const xLabels = data.map(d => d.date.slice(5));
 
 stockChartMain = new Chart(document.getElementById('stockMainChart'), {
   type: 'line',
